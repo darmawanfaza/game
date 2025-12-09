@@ -83,6 +83,9 @@ function sfxSubHit() {
 function sfxSubGameOver() {
   playBeep({ freq: 180, duration: 220, type: "sawtooth", volume: 0.25 });
 }
+function sfxSubPower() {
+  playBeep({ freq: 520, duration: 140, type: "triangle", volume: 0.22 });
+}
 
 // ========== NAVIGASI SCREEN ==========
 document.addEventListener("DOMContentLoaded", () => {
@@ -357,7 +360,7 @@ function updateSnakeScore() {
   if (scoreEl) scoreEl.textContent = snakeScore;
 }
 
-// ========== FLAPPY BIRD (bugfix restart) ==========
+// ========== FLAPPY BIRD ==========
 let flappyCanvas,
   flappyCtx,
   flappyBird,
@@ -438,11 +441,9 @@ function flap() {
 }
 
 function updateFlappy(delta) {
-  // Bird physics
   flappyBird.vy += GRAVITY;
   flappyBird.y += flappyBird.vy;
 
-  // Spawn pipes pakai timer
   flappyPipeTimer += delta;
   if (flappyPipeTimer >= PIPE_INTERVAL) {
     const gapY =
@@ -455,18 +456,14 @@ function updateFlappy(delta) {
     flappyPipeTimer = 0;
   }
 
-  // Move pipes
   const speed = 2.5;
   flappyPipes.forEach((pipe) => {
     pipe.x -= speed;
   });
 
-  // Hapus pipes di luar layar
   flappyPipes = flappyPipes.filter((pipe) => pipe.x + PIPE_WIDTH > 0);
 
-  // Cek skor & tabrakan
   for (const pipe of flappyPipes) {
-    // Nambah skor
     if (!pipe.passed && flappyBird.x > pipe.x + PIPE_WIDTH) {
       pipe.passed = true;
       flappyScore += 1;
@@ -474,7 +471,6 @@ function updateFlappy(delta) {
       sfxFlappyScore();
     }
 
-    // Cek tabrakan
     if (
       flappyBird.x + flappyBird.r > pipe.x &&
       flappyBird.x - flappyBird.r < pipe.x + PIPE_WIDTH
@@ -489,7 +485,6 @@ function updateFlappy(delta) {
     }
   }
 
-  // Tabrak tanah atau langit
   if (
     flappyBird.y + flappyBird.r > flappyCanvas.height ||
     flappyBird.y - flappyBird.r < 0
@@ -502,11 +497,9 @@ function renderFlappy() {
   if (!flappyCtx) return;
   flappyCtx.clearRect(0, 0, flappyCanvas.width, flappyCanvas.height);
 
-  // Latar belakang
   flappyCtx.fillStyle = "#020617";
   flappyCtx.fillRect(0, 0, flappyCanvas.width, flappyCanvas.height);
 
-  // Pipes
   flappyCtx.fillStyle = "#22c55e";
   flappyPipes.forEach((pipe) => {
     flappyCtx.fillRect(pipe.x, 0, PIPE_WIDTH, pipe.gapY);
@@ -518,7 +511,6 @@ function renderFlappy() {
     );
   });
 
-  // Bird
   flappyCtx.fillStyle = "#facc15";
   flappyCtx.beginPath();
   flappyCtx.arc(flappyBird.x, flappyBird.y, flappyBird.r, 0, Math.PI * 2);
@@ -541,12 +533,12 @@ function updateFlappyScore() {
   if (el) el.textContent = flappyScore;
 }
 
-// ========== SOLITAIRE (Klondike sederhana: stock, waste, tableau) ==========
+// ========== SOLITAIRE ==========
 let solitaireDeck = [];
 let solitaireStock = [];
 let solitaireWaste = [];
-let solitaireFoundations = [[], [], [], []]; // per foundation: array of cards
-let solitaireTableau = []; // 7 kolom
+let solitaireFoundations = [[], [], [], []];
+let solitaireTableau = [];
 
 function initSolitaire() {
   const newBtn = document.getElementById("solitaire-new");
@@ -569,7 +561,6 @@ function setupSolitaire() {
 
   createShuffledDeck();
 
-  // Bangun tableau
   for (let col = 0; col < 7; col++) {
     for (let i = 0; i <= col; i++) {
       const card = solitaireDeck.pop();
@@ -578,7 +569,6 @@ function setupSolitaire() {
     }
   }
 
-  // Sisa deck jadi stock
   solitaireStock = [...solitaireDeck];
   solitaireDeck = [];
 
@@ -597,7 +587,7 @@ function createShuffledDeck() {
 
   suits.forEach((suit) => {
     ranks.forEach((rank, idx) => {
-      const value = idx + 1; // A=1, K=13
+      const value = idx + 1;
       solitaireDeck.push({ suit, rank, value });
     });
   });
@@ -616,7 +606,6 @@ function renderSolitaire() {
 
   if (!stockEl || !wasteEl || !tableauEl) return;
 
-  // Stock
   stockEl.innerHTML = "";
   if (solitaireStock.length > 0) {
     const backCard = document.createElement("div");
@@ -626,7 +615,6 @@ function renderSolitaire() {
     stockEl.textContent = "♻";
   }
 
-  // Waste
   wasteEl.innerHTML = "";
   if (solitaireWaste.length > 0) {
     const top = solitaireWaste[solitaireWaste.length - 1];
@@ -635,7 +623,6 @@ function renderSolitaire() {
     wasteEl.appendChild(cardEl);
   }
 
-  // Foundations
   foundationEls.forEach((fEl, idx) => {
     fEl.textContent = "";
     const pile = solitaireFoundations[idx];
@@ -645,7 +632,6 @@ function renderSolitaire() {
     }
   });
 
-  // Tableau
   tableauEl.innerHTML = "";
   solitaireTableau.forEach((column, colIndex) => {
     const colEl = document.createElement("div");
@@ -760,7 +746,7 @@ function checkSolitaireWin() {
   }
 }
 
-// ========== AIR HOCKEY (gawang fix) ==========
+// ========== AIR HOCKEY ==========
 let airCanvas,
   airCtx,
   airLoopId = null;
@@ -792,7 +778,7 @@ function resetAirHockey() {
   puck = {
     x: w / 2,
     y: h / 2,
-    vx: (Math.random() > 0.5 ? 2 : -2),
+    vx: Math.random() > 0.5 ? 2 : -2,
     vy: 2,
     r: 10,
   };
@@ -847,12 +833,10 @@ function updateAirHockey() {
   puck.x += puck.vx;
   puck.y += puck.vy;
 
-  // Dinding samping
   if (puck.x - puck.r < 0 || puck.x + puck.r > w) {
     puck.vx *= -1;
   }
 
-  // AI follow
   const aiSpeed = 2.1;
   if (puck.x < aiPaddle.x - 5) {
     aiPaddle.x -= aiSpeed;
@@ -861,14 +845,12 @@ function updateAirHockey() {
   }
   aiPaddle.x = Math.max(aiPaddle.r, Math.min(w - aiPaddle.r, aiPaddle.x));
 
-  // Tabrakan paddle
   handlePaddleCollision(playerPaddle, true);
   handlePaddleCollision(aiPaddle, false);
 
   const goalLeft = w / 3;
   const goalRight = (2 * w) / 3;
 
-  // Gawang atas (player mencetak)
   if (puck.y - puck.r <= 0) {
     if (puck.x > goalLeft && puck.x < goalRight) {
       airPlayerScore++;
@@ -882,7 +864,6 @@ function updateAirHockey() {
     }
   }
 
-  // Gawang bawah (AI mencetak)
   if (puck.y + puck.r >= h) {
     if (puck.x > goalLeft && puck.x < goalRight) {
       airAiScore++;
@@ -968,11 +949,14 @@ function updateAirHockeyScore() {
 // ========== TETRIS ==========
 let tetrisCanvas,
   tetrisCtx,
+  tetrisNextCanvas,
+  tetrisNextCtx,
   tetrisGrid,
   tetrisCols = 10,
   tetrisRows = 20,
   tetrisTile = 20,
   tetrisPiece = null,
+  tetrisNextType = null,
   tetrisScore = 0,
   tetrisDropInterval = 500,
   tetrisDropTimer = null,
@@ -980,42 +964,42 @@ let tetrisCanvas,
 
 const TETRIS_COLORS = [
   "#000000",
-  "#f97373", // I
-  "#38bdf8", // J
-  "#22c55e", // L
-  "#eab308", // O
-  "#a855f7", // S
-  "#f97316", // T
-  "#06b6d4", // Z
+  "#f97373",
+  "#38bdf8",
+  "#22c55e",
+  "#eab308",
+  "#a855f7",
+  "#f97316",
+  "#06b6d4",
 ];
 
 const TETRIS_SHAPES = [
   [],
-  [[1, 1, 1, 1]], // I
+  [[1, 1, 1, 1]],
   [
     [2, 0, 0],
     [2, 2, 2],
-  ], // J
+  ],
   [
     [0, 0, 3],
     [3, 3, 3],
-  ], // L
+  ],
   [
     [4, 4],
     [4, 4],
-  ], // O
+  ],
   [
     [0, 5, 5],
     [5, 5, 0],
-  ], // S
+  ],
   [
     [0, 6, 0],
     [6, 6, 6],
-  ], // T
+  ],
   [
     [7, 7, 0],
     [0, 7, 7],
-  ], // Z
+  ],
 ];
 
 function initTetris() {
@@ -1023,12 +1007,18 @@ function initTetris() {
   if (!tetrisCanvas) return;
   tetrisCtx = tetrisCanvas.getContext("2d");
 
+  tetrisNextCanvas = document.getElementById("tetris-next");
+  if (tetrisNextCanvas) {
+    tetrisNextCtx = tetrisNextCanvas.getContext("2d");
+  }
+
   const startBtn = document.getElementById("tetris-start");
   if (startBtn) startBtn.addEventListener("click", startTetris);
 
   document.addEventListener("keydown", handleTetrisKey);
   resetTetris();
   drawTetris();
+  drawNextTetris();
 }
 
 function resetTetris() {
@@ -1038,6 +1028,14 @@ function resetTetris() {
   tetrisScore = 0;
   updateTetrisScore();
   tetrisPiece = null;
+  if (tetrisNextType === null) {
+    tetrisNextType = randomTetrisType();
+  }
+  drawNextTetris();
+}
+
+function randomTetrisType() {
+  return 1 + Math.floor(Math.random() * 7);
 }
 
 function startTetris() {
@@ -1063,16 +1061,20 @@ function handleTetrisKey(e) {
 }
 
 function spawnTetrisPiece() {
-  const type = 1 + Math.floor(Math.random() * 7);
+  const type = tetrisNextType ?? randomTetrisType();
   const shape = TETRIS_SHAPES[type];
   tetrisPiece = {
     x: Math.floor(tetrisCols / 2) - Math.ceil(shape[0].length / 2),
     y: 0,
     shape: shape.map((row) => [...row]),
+    type,
   };
   if (collides(tetrisPiece.shape, tetrisPiece.x, tetrisPiece.y)) {
     endTetris();
+    return;
   }
+  tetrisNextType = randomTetrisType();
+  drawNextTetris();
 }
 
 function collides(shape, offsetX, offsetY) {
@@ -1125,7 +1127,6 @@ function tetrisStep() {
   if (!collides(tetrisPiece.shape, tetrisPiece.x, newY)) {
     tetrisPiece.y = newY;
   } else {
-    // lock piece
     for (let y = 0; y < tetrisPiece.shape.length; y++) {
       for (let x = 0; x < tetrisPiece.shape[y].length; x++) {
         const val = tetrisPiece.shape[y][x];
@@ -1161,25 +1162,48 @@ function clearTetrisLines() {
 
 function drawTetris() {
   if (!tetrisCtx) return;
-  tetrisCtx.clearRect(0, 0, tetrisCanvas.width, tetrisCanvas.height);
+  const w = tetrisCanvas.width;
+  const h = tetrisCanvas.height;
 
-  // grid
+  tetrisCtx.clearRect(0, 0, w, h);
+
+  tetrisCtx.fillStyle = "#020617";
+  tetrisCtx.fillRect(0, 0, w, h);
+
+  // Grid
+  tetrisCtx.strokeStyle = "rgba(148,163,184,0.2)";
+  tetrisCtx.lineWidth = 0.5;
+  for (let x = 0; x <= tetrisCols; x++) {
+    const px = x * tetrisTile;
+    tetrisCtx.beginPath();
+    tetrisCtx.moveTo(px, 0);
+    tetrisCtx.lineTo(px, tetrisRows * tetrisTile);
+    tetrisCtx.stroke();
+  }
+  for (let y = 0; y <= tetrisRows; y++) {
+    const py = y * tetrisTile;
+    tetrisCtx.beginPath();
+    tetrisCtx.moveTo(0, py);
+    tetrisCtx.lineTo(tetrisCols * tetrisTile, py);
+    tetrisCtx.stroke();
+  }
+
+  // Grid content
   for (let y = 0; y < tetrisRows; y++) {
     for (let x = 0; x < tetrisCols; x++) {
       const val = tetrisGrid[y][x];
       if (val !== 0) {
         tetrisCtx.fillStyle = TETRIS_COLORS[val];
         tetrisCtx.fillRect(
-          x * tetrisTile,
-          y * tetrisTile,
-          tetrisTile - 1,
-          tetrisTile - 1
+          x * tetrisTile + 1,
+          y * tetrisTile + 1,
+          tetrisTile - 2,
+          tetrisTile - 2
         );
       }
     }
   }
 
-  // piece
   if (tetrisPiece) {
     for (let y = 0; y < tetrisPiece.shape.length; y++) {
       for (let x = 0; x < tetrisPiece.shape[y].length; x++) {
@@ -1190,13 +1214,49 @@ function drawTetris() {
           if (gy >= 0) {
             tetrisCtx.fillStyle = TETRIS_COLORS[val];
             tetrisCtx.fillRect(
-              gx * tetrisTile,
-              gy * tetrisTile,
-              tetrisTile - 1,
-              tetrisTile - 1
+              gx * tetrisTile + 1,
+              gy * tetrisTile + 1,
+              tetrisTile - 2,
+              tetrisTile - 2
             );
           }
         }
+      }
+    }
+  }
+}
+
+function drawNextTetris() {
+  if (!tetrisNextCtx) return;
+  const w = tetrisNextCanvas.width;
+  const h = tetrisNextCanvas.height;
+
+  tetrisNextCtx.clearRect(0, 0, w, h);
+  tetrisNextCtx.fillStyle = "#020617";
+  tetrisNextCtx.fillRect(0, 0, w, h);
+
+  if (!tetrisNextType) return;
+  const shape = TETRIS_SHAPES[tetrisNextType];
+  const color = TETRIS_COLORS[tetrisNextType];
+
+  const rows = shape.length;
+  const cols = shape[0].length;
+  const tile = 16;
+  const shapeW = cols * tile;
+  const shapeH = rows * tile;
+  const offsetX = (w - shapeW) / 2;
+  const offsetY = (h - shapeH) / 2;
+
+  tetrisNextCtx.fillStyle = color;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (shape[y][x] !== 0) {
+        tetrisNextCtx.fillRect(
+          offsetX + x * tile + 1,
+          offsetY + y * tile + 1,
+          tile - 2,
+          tile - 2
+        );
       }
     }
   }
@@ -1215,18 +1275,20 @@ function updateTetrisScore() {
   if (el) el.textContent = tetrisScore;
 }
 
-// ========== SUBMARINE BATTLE ==========
+// ========== SUBMARINE BATTLE (SHOOT 'EM UP + HP + POWER-UP HUD) ==========
 let subCanvas,
   subCtx,
   subRunning = false,
   submarine,
   torpedoes = [],
   enemies = [],
+  powerUps = [],
   subScore = 0,
   subLoopId = null,
   subKeys = {},
   lastShotTime = 0,
-  lastEnemySpawn = 0;
+  lastEnemySpawn = 0,
+  lastPowerSpawn = 0;
 
 function initSubmarine() {
   subCanvas = document.getElementById("submarine-canvas");
@@ -1248,23 +1310,37 @@ function initSubmarine() {
 }
 
 function resetSubmarine() {
+  const w = subCanvas.width;
+  const h = subCanvas.height;
+
   submarine = {
-    x: 80,
-    y: subCanvas.height / 2,
-    vy: 0,
-    r: 14,
+    x: w / 2,
+    y: h - 60,
+    r: 18,
+    baseSpeed: 2.4,
+    speedMultiplier: 1,
+    fireMode: "single",
+    speedUntil: 0,
+    doubleUntil: 0,
+    spreadUntil: 0,
+    hp: 3,
+    invUntil: 0,
   };
+
   torpedoes = [];
   enemies = [];
+  powerUps = [];
   subScore = 0;
   updateSubmarineScore();
   lastShotTime = 0;
   lastEnemySpawn = 0;
+  lastPowerSpawn = 0;
 }
 
 function startSubmarine() {
   resetSubmarine();
   subRunning = true;
+
   if (subLoopId) cancelAnimationFrame(subLoopId);
 
   let lastTime = performance.now();
@@ -1272,7 +1348,7 @@ function startSubmarine() {
     if (!subRunning) return;
     const delta = time - lastTime;
     lastTime = time;
-    updateSubmarine(delta);
+    updateSubmarine(delta, time);
     renderSubmarine();
     subLoopId = requestAnimationFrame(loop);
   };
@@ -1280,97 +1356,206 @@ function startSubmarine() {
   subLoopId = requestAnimationFrame(loop);
 }
 
-function shootTorpedo(time) {
-  const cooldown = 250;
-  if (time - lastShotTime < cooldown) return;
-  lastShotTime = time;
-  torpedoes.push({
-    x: submarine.x + 20,
-    y: submarine.y,
-    vx: 4,
-  });
-  sfxSubShoot();
-}
+function updateSubmarine(delta, timeNow) {
+  const w = subCanvas.width;
+  const h = subCanvas.height;
 
-function spawnEnemy(time) {
-  const interval = 1200;
-  if (time - lastEnemySpawn < interval) return;
-  lastEnemySpawn = time;
-  enemies.push({
-    x: subCanvas.width + 20,
-    y: 40 + Math.random() * (subCanvas.height - 80),
-    vx: -2.2 - Math.random() * 0.8,
-    r: 16,
-  });
-}
-
-function updateSubmarine(delta) {
-  const timeNow = performance.now();
-
-  // Input gerak
-  const upPressed = subKeys["ArrowUp"] || subKeys["KeyW"];
-  const downPressed = subKeys["ArrowDown"] || subKeys["KeyS"];
-  if (upPressed && !downPressed) {
-    submarine.vy = -2.4;
-  } else if (downPressed && !upPressed) {
-    submarine.vy = 2.4;
+  submarine.speedMultiplier = timeNow < submarine.speedUntil ? 1.8 : 1;
+  if (timeNow < submarine.spreadUntil) {
+    submarine.fireMode = "spread";
+  } else if (timeNow < submarine.doubleUntil) {
+    submarine.fireMode = "double";
   } else {
-    submarine.vy *= 0.85;
+    submarine.fireMode = "single";
   }
 
-  submarine.y += submarine.vy;
-  submarine.y = Math.max(20, Math.min(subCanvas.height - 20, submarine.y));
+  let vx = 0;
+  let vy = 0;
+  if (subKeys["ArrowLeft"] || subKeys["KeyA"]) vx -= 1;
+  if (subKeys["ArrowRight"] || subKeys["KeyD"]) vx += 1;
+  if (subKeys["ArrowUp"] || subKeys["KeyW"]) vy -= 1;
+  if (subKeys["ArrowDown"] || subKeys["KeyS"]) vy += 1;
 
-  // Shoot
+  if (vx !== 0 || vy !== 0) {
+    const len = Math.sqrt(vx * vx + vy * vy) || 1;
+    vx /= len;
+    vy /= len;
+  }
+
+  const speed = submarine.baseSpeed * submarine.speedMultiplier;
+  submarine.x += vx * speed;
+  submarine.y += vy * speed;
+
+  const margin = 20;
+  submarine.x = Math.max(margin, Math.min(w - margin, submarine.x));
+  submarine.y = Math.max(margin, Math.min(h - margin, submarine.y));
+
   if (subKeys["Space"]) {
     shootTorpedo(timeNow);
   }
 
-  // Update torpedo
   torpedoes.forEach((t) => {
     t.x += t.vx;
+    t.y += t.vy;
   });
-  torpedoes = torpedoes.filter((t) => t.x < subCanvas.width + 30);
+  torpedoes = torpedoes.filter((t) => t.y > -30 && t.x > -30 && t.x < w + 30);
 
-  // Spawn enemy
   spawnEnemy(timeNow);
+  spawnPowerUp(timeNow);
 
-  // Update enemy
   enemies.forEach((e) => {
-    e.x += e.vx;
+    if (e.type === "elite") {
+      e.y += e.vy;
+      e.phase += (delta / 16) * 0.04;
+      e.x = e.baseX + Math.sin(e.phase) * 40;
+    } else {
+      e.x += e.vx;
+      e.y += e.vy;
+    }
   });
-  enemies = enemies.filter((e) => e.x > -30);
+  enemies = enemies.filter((e) => e.y < h + 40);
 
-  // Cek hit torpedo-enemy
+  powerUps.forEach((p) => {
+    p.y += p.vy;
+  });
+  powerUps = powerUps.filter((p) => p.y < h + 30);
+
   for (let i = enemies.length - 1; i >= 0; i--) {
-    let hit = false;
+    let removed = false;
     for (let j = torpedoes.length - 1; j >= 0; j--) {
       const dx = enemies[i].x - torpedoes[j].x;
       const dy = enemies[i].y - torpedoes[j].y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < enemies[i].r) {
-        // hancur
-        enemies.splice(i, 1);
         torpedoes.splice(j, 1);
-        subScore += 10;
-        updateSubmarineScore();
-        sfxSubHit();
-        hit = true;
+        enemies[i].hp -= 1;
+        if (enemies[i].hp <= 0) {
+          subScore += enemies[i].score;
+          enemies.splice(i, 1);
+          sfxSubHit();
+        }
+        removed = true;
         break;
       }
     }
-    if (hit) continue;
+    if (removed) continue;
   }
 
-  // Cek tabrakan musuh dengan kapal selam
   for (const e of enemies) {
     const dx = e.x - submarine.x;
     const dy = e.y - submarine.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < e.r + submarine.r) {
-      endSubmarine();
-      return;
+      if (timeNow < submarine.invUntil) continue;
+      submarine.hp -= 1;
+      submarine.invUntil = timeNow + 1500;
+      if (submarine.hp <= 0) {
+        endSubmarine();
+        return;
+      }
     }
+  }
+
+  for (let i = powerUps.length - 1; i >= 0; i--) {
+    const p = powerUps[i];
+    const dx = p.x - submarine.x;
+    const dy = p.y - submarine.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < submarine.r + 12) {
+      applyPowerUp(p.type, timeNow);
+      powerUps.splice(i, 1);
+      sfxSubPower();
+    }
+  }
+}
+
+function shootTorpedo(timeNow) {
+  const cooldownBase = 230;
+  const cooldown =
+    submarine.speedMultiplier > 1 ? cooldownBase * 0.7 : cooldownBase;
+
+  if (timeNow - lastShotTime < cooldown) return;
+  lastShotTime = timeNow;
+
+  const shots = [];
+  const yStart = submarine.y - 18;
+
+  if (submarine.fireMode === "single") {
+    shots.push({ x: submarine.x, y: yStart, vx: 0, vy: -6 });
+  } else if (submarine.fireMode === "double") {
+    shots.push({ x: submarine.x - 8, y: yStart, vx: 0, vy: -6 });
+    shots.push({ x: submarine.x + 8, y: yStart, vx: 0, vy: -6 });
+  } else if (submarine.fireMode === "spread") {
+    shots.push({ x: submarine.x, y: yStart, vx: 0, vy: -6 });
+    shots.push({ x: submarine.x - 6, y: yStart, vx: -1.5, vy: -6 });
+    shots.push({ x: submarine.x + 6, y: yStart, vx: 1.5, vy: -6 });
+  }
+
+  torpedoes.push(...shots);
+  sfxSubShoot();
+}
+
+function spawnEnemy(timeNow) {
+  const w = subCanvas.width;
+  const baseInterval = 900;
+  if (timeNow - lastEnemySpawn < baseInterval) return;
+  lastEnemySpawn = timeNow;
+
+  const eliteChance = 0.18;
+  if (Math.random() < eliteChance) {
+    const x = 40 + Math.random() * (w - 80);
+    enemies.push({
+      type: "elite",
+      x,
+      y: -30,
+      baseX: x,
+      phase: Math.random() * Math.PI * 2,
+      vx: 0,
+      vy: 1.3,
+      r: 22,
+      hp: 3,
+      score: 30,
+    });
+  } else {
+    enemies.push({
+      type: "normal",
+      x: 40 + Math.random() * (w - 80),
+      y: -20,
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: 1.6 + Math.random() * 1.2,
+      r: 16,
+      hp: 1,
+      score: 10,
+    });
+  }
+}
+
+function spawnPowerUp(timeNow) {
+  const w = subCanvas.width;
+  const interval = 6000;
+  if (timeNow - lastPowerSpawn < interval) return;
+  lastPowerSpawn = timeNow;
+
+  const types = ["speed", "double", "spread"];
+  const type = types[Math.floor(Math.random() * types.length)];
+
+  powerUps.push({
+    x: 40 + Math.random() * (w - 80),
+    y: -20,
+    vy: 1.2,
+    type,
+  });
+}
+
+function applyPowerUp(type, timeNow) {
+  const durSpeed = 8000;
+  const durOther = 9000;
+  if (type === "speed") {
+    submarine.speedUntil = timeNow + durSpeed;
+  } else if (type === "double") {
+    submarine.doubleUntil = timeNow + durOther;
+  } else if (type === "spread") {
+    submarine.spreadUntil = timeNow + durOther;
   }
 }
 
@@ -1380,29 +1565,29 @@ function renderSubmarine() {
   const h = subCanvas.height;
 
   subCtx.clearRect(0, 0, w, h);
-  // Air
   subCtx.fillStyle = "#020617";
   subCtx.fillRect(0, 0, w, h);
 
-  // Sedikit gelembung
-  subCtx.strokeStyle = "rgba(148,163,184,0.2)";
-  for (let i = 0; i < 12; i++) {
-    const bx = (i * 50 + (performance.now() / 30)) % w;
-    const by = (i * 25) % h;
+  subCtx.strokeStyle = "rgba(148,163,184,0.25)";
+  for (let i = 0; i < 15; i++) {
+    const bx = (i * 60 + performance.now() / 40) % w;
+    const by = (i * 30) % h;
     subCtx.beginPath();
     subCtx.arc(bx, by, 3, 0, Math.PI * 2);
     subCtx.stroke();
   }
 
-  // Torpedoes
   subCtx.fillStyle = "#e5e7eb";
   torpedoes.forEach((t) => {
-    subCtx.fillRect(t.x - 6, t.y - 2, 12, 4);
+    subCtx.fillRect(t.x - 3, t.y - 8, 6, 10);
   });
 
-  // Enemies (mine / kapal musuh)
   enemies.forEach((e) => {
-    subCtx.fillStyle = "#f97373";
+    if (e.type === "elite") {
+      subCtx.fillStyle = "#fb7185";
+    } else {
+      subCtx.fillStyle = "#f97373";
+    }
     subCtx.beginPath();
     subCtx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
     subCtx.fill();
@@ -1412,18 +1597,116 @@ function renderSubmarine() {
     subCtx.stroke();
   });
 
-  // Submarine
+  powerUps.forEach((p) => {
+    let color = "#38bdf8";
+    let label = "S";
+    if (p.type === "double") {
+      color = "#eab308";
+      label = "D";
+    } else if (p.type === "spread") {
+      color = "#a855f7";
+      label = "T";
+    }
+    subCtx.fillStyle = color;
+    subCtx.beginPath();
+    subCtx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+    subCtx.fill();
+    subCtx.fillStyle = "#020617";
+    subCtx.font = "10px system-ui";
+    subCtx.textAlign = "center";
+    subCtx.textBaseline = "middle";
+    subCtx.fillText(label, p.x, p.y + 1);
+  });
+
+  // Player (blink saat invincibility)
+  const now = performance.now();
+  const inv = now < submarine.invUntil;
+  if (inv && Math.floor(now / 120) % 2 === 0) {
+    subCtx.globalAlpha = 0.4;
+  } else {
+    subCtx.globalAlpha = 1;
+  }
+
   subCtx.fillStyle = "#38bdf8";
   subCtx.beginPath();
-  subCtx.ellipse(submarine.x, submarine.y, 24, 12, 0, 0, Math.PI * 2);
+  subCtx.ellipse(submarine.x, submarine.y, 24, 14, 0, 0, Math.PI * 2);
   subCtx.fill();
-  // Tower
-  subCtx.fillRect(submarine.x - 6, submarine.y - 16, 12, 10);
-  // Window
+
+  subCtx.beginPath();
+  subCtx.moveTo(submarine.x, submarine.y - 18);
+  subCtx.lineTo(submarine.x - 8, submarine.y - 6);
+  subCtx.lineTo(submarine.x + 8, submarine.y - 6);
+  subCtx.closePath();
+  subCtx.fillStyle = "#0ea5e9";
+  subCtx.fill();
+
   subCtx.fillStyle = "#0f172a";
   subCtx.beginPath();
-  subCtx.arc(submarine.x + 8, submarine.y, 4, 0, Math.PI * 2);
+  subCtx.arc(submarine.x, submarine.y, 6, 0, Math.PI * 2);
   subCtx.fill();
+
+  subCtx.globalAlpha = 1;
+
+  // HUD: HP (hearts)
+  const hp = submarine.hp;
+  const heartSize = 10;
+  for (let i = 0; i < hp; i++) {
+    const hx = 18 + i * 20;
+    const hy = 18;
+    subCtx.fillStyle = "#f97373";
+    subCtx.beginPath();
+    subCtx.arc(hx - 4, hy, heartSize / 2, 0, Math.PI * 2);
+    subCtx.arc(hx + 4, hy, heartSize / 2, 0, Math.PI * 2);
+    subCtx.lineTo(hx, hy + heartSize);
+    subCtx.closePath();
+    subCtx.fill();
+  }
+
+  // HUD: power bars (top-right)
+  const barWidth = 80;
+  const barHeight = 6;
+  const margin = 10;
+  let barIndex = 0;
+
+  function drawBar(label, frac, color) {
+    const x = w - barWidth - margin;
+    const y = margin + barIndex * (barHeight + 6);
+    barIndex++;
+
+    subCtx.fillStyle = "rgba(15,23,42,0.9)";
+    subCtx.fillRect(x, y, barWidth, barHeight);
+    subCtx.strokeStyle = "rgba(148,163,184,0.7)";
+    subCtx.strokeRect(x, y, barWidth, barHeight);
+
+    if (frac > 0) {
+      subCtx.fillStyle = color;
+      subCtx.fillRect(x + 1, y + 1, (barWidth - 2) * frac, barHeight - 2);
+    }
+
+    subCtx.fillStyle = "#e5e7eb";
+    subCtx.font = "9px system-ui";
+    subCtx.textAlign = "right";
+    subCtx.textBaseline = "bottom";
+    subCtx.fillText(label, x + barWidth, y - 1);
+  }
+
+  const nowMs = performance.now();
+  const speedFrac = Math.max(
+    0,
+    (submarine.speedUntil - nowMs) / 8000
+  );
+  const doubleFrac = Math.max(
+    0,
+    (submarine.doubleUntil - nowMs) / 9000
+  );
+  const spreadFrac = Math.max(
+    0,
+    (submarine.spreadUntil - nowMs) / 9000
+  );
+
+  drawBar("SPD", speedFrac, "#38bdf8");
+  drawBar("DBL", doubleFrac, "#eab308");
+  drawBar("SPR", spreadFrac, "#a855f7");
 }
 
 function endSubmarine() {
@@ -1431,7 +1714,7 @@ function endSubmarine() {
   if (subLoopId) cancelAnimationFrame(subLoopId);
   subLoopId = null;
   sfxSubGameOver();
-  alert("Kapal selam hancur! Skor kamu: " + subScore);
+  alert("Kapalmu hancur! Skor kamu: " + subScore);
 }
 
 function updateSubmarineScore() {

@@ -1,319 +1,496 @@
-/* Reset dasar */
+/* ===== Reset & Global ===== */
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
 
+:root {
+  --bg-dark: #050816;
+  --bg-card: #111827;
+  --accent: #38bdf8;
+  --accent-soft: rgba(56, 189, 248, 0.2);
+  --text-main: #e5e7eb;
+  --text-muted: #9ca3af;
+  --border-subtle: rgba(148, 163, 184, 0.3);
+  --radius-lg: 18px;
+  --shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.9);
+  --transition-fast: 0.2s ease;
+}
+
+html,
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #050816;
-  color: #f9fafb;
-  min-height: 100vh;
-  overflow-x: hidden;
+  height: 100%;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  color: var(--text-main);
+  background: #020617;
 }
 
-/* Background anim */
-.background {
+/* Background gradient overlay */
+.background-gradient {
   position: fixed;
   inset: 0;
-  background: radial-gradient(circle at 0% 0%, #0ea5e9 0, transparent 50%),
-              radial-gradient(circle at 100% 100%, #a855f7 0, transparent 55%),
-              radial-gradient(circle at 0% 100%, #22c55e33 0, transparent 60%);
-  opacity: 0.4;
-  filter: blur(50px);
-  z-index: -1;
+  z-index: -2;
+  background: radial-gradient(circle at top left, #0f172a 0, transparent 55%),
+    radial-gradient(circle at bottom right, #1f2937 0, transparent 55%),
+    linear-gradient(135deg, #020617, #020617);
 }
 
-/* Struktur utama */
+/* ===== Layout ===== */
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .main-header {
-  text-align: center;
-  padding: 2rem 1rem 1rem;
+  padding: 18px 6vw 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.main-header h1 {
-  font-size: 2.4rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 0.3rem;
+.logo {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
-.main-header p {
-  color: #e5e7eb;
+.logo::after {
+  content: "";
+  height: 3px;
+  width: 70px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+}
+
+.subtitle {
+  color: var(--text-muted);
   font-size: 0.95rem;
 }
 
 .main-footer {
+  margin-top: auto;
+  padding: 10px 6vw 18px;
   text-align: center;
-  padding: 1rem;
+  color: var(--text-muted);
   font-size: 0.8rem;
-  opacity: 0.8;
 }
 
-/* Screens */
+/* ===== Screens ===== */
 .screen {
   display: none;
-  padding: 0 1rem 2rem;
-  max-width: 1000px;
-  margin: 0 auto;
+  padding: 10px 6vw 24px;
 }
 
-.active-screen {
+.screen.active {
   display: block;
 }
 
-.screen-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin: 1rem 0;
+.game-screen {
+  animation: fadeIn 0.2s ease-out;
 }
 
-.screen-header h2 {
-  font-size: 1.4rem;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* Buttons */
-.primary-btn,
-.back-btn {
-  border: none;
-  padding: 0.6rem 1.1rem;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #2563eb, #a855f7);
-  color: #f9fafb;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.6);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.2s ease;
-  font-size: 0.9rem;
+/* ===== Menu ===== */
+.menu-intro {
+  margin: 10px 0 18px;
 }
 
-.primary-btn:hover,
-.back-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.8);
-  filter: brightness(1.05);
+.menu-intro h1 {
+  font-size: 1.9rem;
+  margin-bottom: 4px;
 }
 
-.back-btn {
-  background: transparent;
-  border: 1px solid #4b5563;
-  box-shadow: none;
+.menu-intro p {
+  color: var(--text-muted);
+  max-width: 520px;
 }
 
-/* HOME: Game selection */
-.game-selection {
+/* Game grid */
+.game-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1.2rem;
-  padding: 1.5rem 0 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 18px;
+  margin-top: 12px;
 }
 
 .game-card {
   position: relative;
-  background: rgba(15, 23, 42, 0.9);
-  border-radius: 1rem;
-  padding: 1rem;
-  cursor: pointer;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.9);
+  padding: 16px 14px 14px;
+  background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.06), transparent 55%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.92));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
   overflow: hidden;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+    border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .game-card::before {
   content: "";
   position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.25), transparent 55%),
-              radial-gradient(circle at bottom right, rgba(244, 114, 182, 0.2), transparent 60%);
+  inset: -40%;
+  background: radial-gradient(
+    circle at top right,
+    rgba(56, 189, 248, 0.18),
+    transparent 55%
+  );
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--transition-fast);
+  pointer-events: none;
 }
 
 .game-card:hover {
   transform: translateY(-4px) scale(1.01);
-  border-color: rgba(96, 165, 250, 0.8);
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 1);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.95);
+  border-color: var(--accent);
 }
 
 .game-card:hover::before {
   opacity: 1;
 }
 
+.game-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
 .game-card h2 {
-  font-size: 1.2rem;
-  margin-bottom: 0.3rem;
+  font-size: 1.15rem;
+  margin-bottom: 4px;
 }
 
 .game-card p {
-  font-size: 0.88rem;
-  color: #cbd5f5;
-  margin-bottom: 0.9rem;
-}
-
-.badge {
-  display: inline-flex;
-  padding: 0.25rem 0.7rem;
-  font-size: 0.7rem;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(148, 163, 184, 0.6);
-}
-
-/* Game container */
-.game-container {
-  background: rgba(15, 23, 42, 0.9);
-  border-radius: 1.2rem;
-  padding: 1.2rem;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.95);
-}
-
-.status-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.9rem;
   font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
 }
 
-.status-bar .hint {
+.play-button {
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), #2563eb);
+  color: #0b1120;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.55);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+    filter var(--transition-fast);
+}
+
+.play-button::after {
+  content: "▶";
   font-size: 0.8rem;
-  color: #9ca3af;
 }
 
-/* Tic Tac Toe */
-.tictactoe-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 90px);
-  grid-template-rows: repeat(3, 90px);
-  gap: 0.4rem;
-  justify-content: center;
-  margin: 0.8rem auto 1rem;
+.game-card:hover .play-button {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
 }
 
-.cell {
-  background: rgba(15, 23, 42, 0.95);
-  border-radius: 0.7rem;
-  border: 1px solid rgba(75, 85, 99, 0.9);
+/* ===== Game Screens ===== */
+.game-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 2.1rem;
-  cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
-.cell:hover {
-  background: rgba(31, 41, 55, 0.95);
+.game-header h2 {
+  font-size: 1.4rem;
+}
+
+.game-content {
+  background: rgba(15, 23, 42, 0.92);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.center-column {
+  align-items: center;
+}
+
+.back-button {
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(15, 23, 42, 0.9);
+  color: var(--text-main);
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.back-button:hover {
+  background: rgba(30, 64, 175, 0.65);
+  border-color: var(--accent);
   transform: translateY(-1px);
 }
 
-/* Canvas games */
-canvas {
-  display: block;
-  margin: 0 auto 1rem;
-  border-radius: 1rem;
-  background: radial-gradient(circle at 30% 0%, #0f172a, #020617);
-  border: 1px solid rgba(148, 163, 184, 0.35);
+.secondary-button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(15, 23, 42, 0.9);
+  color: var(--text-main);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    transform var(--transition-fast);
 }
 
-/* Solitaire */
-.solitaire-board {
+.secondary-button:hover {
+  background: rgba(37, 99, 235, 0.3);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.game-info {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.9rem;
+}
+
+.game-help {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ===== Tic Tac Toe ===== */
+.ttt-board {
   display: grid;
-  grid-template-columns: 1fr 1fr 2fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(3, 80px);
+  grid-template-rows: repeat(3, 80px);
+  gap: 6px;
+  margin-top: 8px;
 }
 
-.sol-column h3 {
-  font-size: 0.95rem;
-  margin-bottom: 0.4rem;
-}
-
-.card-stack {
-  min-height: 100px;
-  border-radius: 0.8rem;
-  border: 1px dashed rgba(148, 163, 184, 0.6);
-  padding: 0.3rem;
+.ttt-cell {
+  width: 80px;
+  height: 80px;
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.1), transparent 65%);
+  font-size: 2.1rem;
+  font-weight: 600;
+  color: var(--accent);
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast),
+    border-color var(--transition-fast), color var(--transition-fast);
 }
 
-.deck {
-  justify-content: flex-start;
+.ttt-cell:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  background: rgba(15, 23, 42, 0.95);
 }
 
-.waste {
-  justify-content: flex-start;
+/* ===== Canvas Games (Snake, Flappy, Air Hockey) ===== */
+canvas {
+  border-radius: 18px;
+  border: 1px solid var(--border-subtle);
+  background: radial-gradient(circle at top, rgba(15, 23, 42, 0.9), #020617);
+  box-shadow: var(--shadow-soft);
 }
 
-.foundation-row {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.foundation {
-  flex: 1;
-  min-height: 90px;
-  border-radius: 0.8rem;
-  border: 1px dashed rgba(148, 163, 184, 0.6);
-  padding: 0.3rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
-
-/* Kartu */
-.card {
-  width: 42px;
-  height: 60px;
-  border-radius: 0.4rem;
-  background: #f9fafb;
-  color: #111827;
+/* ===== Solitaire ===== */
+.solitaire-panel {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.solitaire-top {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  padding: 0.2rem 0.25rem;
-  font-size: 0.7rem;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.7);
+  gap: 16px;
+}
+
+.solitaire-stock-area {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pile {
+  width: 60px;
+  height: 80px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(15, 23, 42, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+}
+
+.stock {
   cursor: pointer;
 }
 
-.card.red {
-  color: #b91c1c;
+.waste {
+  position: relative;
 }
 
-.card .corner-top {
+.solitaire-foundations {
+  display: flex;
+  gap: 10px;
+}
+
+.foundation {
+  width: 60px;
+  height: 80px;
+  border-radius: 10px;
+  border: 1px dashed var(--border-subtle);
+  background: rgba(15, 23, 42, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.solitaire-tableau {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.tableau-column {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 60px;
+}
+
+/* Kartu umum */
+.card {
+  width: 60px;
+  height: 80px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: radial-gradient(circle at top left, rgba(248, 250, 252, 0.06), transparent 60%),
+    rgba(15, 23, 42, 0.95);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+    border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.card.red {
+  color: #f97373;
+}
+
+.card.black {
+  color: #e5e7eb;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.9);
+  border-color: var(--accent);
+}
+
+.card-rank-top {
   align-self: flex-start;
 }
 
-.card .corner-bottom {
-  align-self: flex-end;
-  transform: rotate(180deg);
+.card-suit-center {
+  font-size: 1.2rem;
+  align-self: center;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .tictactoe-grid {
+.card-rank-bottom {
+  align-self: flex-end;
+}
+
+/* Kartu tertutup */
+.card.face-down {
+  background: repeating-linear-gradient(
+      45deg,
+      #020617,
+      #020617 4px,
+      #111827 4px,
+      #111827 8px
+    );
+  border-color: rgba(30, 64, 175, 0.6);
+  color: transparent;
+}
+
+/* ===== Air Hockey ===== */
+#airhockey-canvas {
+  max-width: 100%;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 640px) {
+  .game-content {
+    padding: 14px;
+  }
+
+  .ttt-board {
     grid-template-columns: repeat(3, 70px);
     grid-template-rows: repeat(3, 70px);
   }
 
-  canvas {
-    width: 100% !important;
-    height: auto !important;
+  .ttt-cell {
+    width: 70px;
+    height: 70px;
   }
 
-  .solitaire-board {
-    grid-template-columns: 1fr;
+  .solitaire-foundations {
+    gap: 6px;
+  }
+
+  .pile,
+  .foundation,
+  .card {
+    width: 50px;
+    height: 70px;
   }
 }

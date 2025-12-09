@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arcade Hub - Game Collection</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="background"></div>
+
+  <header class="main-header">
+    <h1>Arcade Hub</h1>
+    <p>Pilih permainan favoritmu dan langsung bermain!</p>
+  </header>
+
+  <!-- HOME / MENU -->
+  <main id="home" class="screen active-screen">
+    <section class="game-selection">
+      <div class="game-card" data-target="tictactoe-screen">
+        <h2>Tic Tac Toe</h2>
+        <p>Permainan klasik X dan O.</p>
+        <span class="badge">2 Player</span>
+      </div>
+
+      <div class="game-card" data-target="snake-screen">
+        <h2>Snake</h2>
+        <p>Kumpulkan buah, jangan tabrak tubuhmu sendiri.</p>
+        <span class="badge">Arcade</span>
+      </div>
+
+      <div class="game-card" data-target="flappy-screen">
+        <h2>Flappy Bird</h2>
+        <p>Terbang melewati pipa tanpa menabrak.</p>
+        <span class="badge">Reflex</span>
+      </div>
+
+      <div class="game-card" data-target="solitaire-screen">
+        <h2>Solitaire</h2>
+        <p>Susun kartu ke foundation berdasarkan suit.</p>
+        <span class="badge">Card</span>
+      </div>
+
+      <div class="game-card" data-target="hockey-screen">
+        <h2>Air Hockey</h2>
+        <p>Masukkan puck ke gawang lawan.</p>
+        <span class="badge">2 Player</span>
+      </div>
+    </section>
+  </main>
+
+  <!-- TIC TAC TOE -->
+  <section id="tictactoe-screen" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" data-back>⟵ Kembali</button>
+      <h2>Tic Tac Toe</h2>
+    </div>
+    <div class="game-container">
+      <div id="tictactoe-status" class="status-bar"></div>
+      <div class="tictactoe-grid">
+        <div class="cell" data-index="0"></div>
+        <div class="cell" data-index="1"></div>
+        <div class="cell" data-index="2"></div>
+        <div class="cell" data-index="3"></div>
+        <div class="cell" data-index="4"></div>
+        <div class="cell" data-index="5"></div>
+        <div class="cell" data-index="6"></div>
+        <div class="cell" data-index="7"></div>
+        <div class="cell" data-index="8"></div>
+      </div>
+      <button id="tictactoe-reset" class="primary-btn">Reset Game</button>
+    </div>
+  </section>
+
+  <!-- SNAKE -->
+  <section id="snake-screen" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" data-back>⟵ Kembali</button>
+      <h2>Snake</h2>
+    </div>
+    <div class="game-container">
+      <div class="status-bar">
+        <span>Score: <span id="snake-score">0</span></span>
+        <span class="hint">Gunakan tombol panah untuk bergerak</span>
+      </div>
+      <canvas id="snake-canvas" width="400" height="400"></canvas>
+      <button id="snake-start" class="primary-btn">Mulai / Restart</button>
+    </div>
+  </section>
+
+  <!-- FLAPPY BIRD -->
+  <section id="flappy-screen" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" data-back>⟵ Kembali</button>
+      <h2>Flappy Bird</h2>
+    </div>
+    <div class="game-container">
+      <div class="status-bar">
+        <span>Score: <span id="flappy-score">0</span></span>
+        <span class="hint">Tekan spasi atau klik pada game untuk terbang</span>
+      </div>
+      <canvas id="flappy-canvas" width="400" height="550"></canvas>
+      <button id="flappy-start" class="primary-btn">Mulai / Restart</button>
+    </div>
+  </section>
+
+  <!-- SOLITAIRE (versi sederhana: deck + waste + 4 foundation) -->
+  <section id="solitaire-screen" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" data-back>⟵ Kembali</button>
+      <h2>Solitaire (Simplified)</h2>
+    </div>
+    <div class="game-container">
+      <div class="status-bar">
+        <span id="solitaire-status">Klik DECK untuk membalik kartu, klik kartu di WASTE untuk memindahkan ke foundation.</span>
+      </div>
+      <div class="solitaire-board">
+        <div class="sol-column">
+          <h3>Deck</h3>
+          <div id="sol-deck" class="card-stack deck"></div>
+        </div>
+        <div class="sol-column">
+          <h3>Waste</h3>
+          <div id="sol-waste" class="card-stack waste"></div>
+        </div>
+        <div class="sol-column">
+          <h3>Foundation</h3>
+          <div id="sol-foundations" class="foundation-row">
+            <div class="foundation" data-foundation="0"></div>
+            <div class="foundation" data-foundation="1"></div>
+            <div class="foundation" data-foundation="2"></div>
+            <div class="foundation" data-foundation="3"></div>
+          </div>
+        </div>
+      </div>
+      <button id="solitaire-new" class="primary-btn">Game Baru</button>
+    </div>
+  </section>
+
+  <!-- AIR HOCKEY -->
+  <section id="hockey-screen" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" data-back>⟵ Kembali</button>
+      <h2>Air Hockey</h2>
+    </div>
+    <div class="game-container">
+      <div class="status-bar">
+        <span>Score: <span id="hockey-score-left">0</span> - <span id="hockey-score-right">0</span></span>
+        <span class="hint">P1: W/S · P2: ↑/↓</span>
+      </div>
+      <canvas id="hockey-canvas" width="600" height="300"></canvas>
+      <button id="hockey-start" class="primary-btn">Mulai / Restart</button>
+    </div>
+  </section>
+
+  <footer class="main-footer">
+    <p>Arcade Hub &copy; 2025 · Built for fun 🎮</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

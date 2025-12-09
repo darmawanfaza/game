@@ -1,160 +1,168 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Arcade Hub - Game Collection</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>Arcade Hub - Game Platform</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="background"></div>
+  <div class="background-gradient"></div>
 
   <header class="main-header">
-    <h1>Arcade Hub</h1>
-    <p>Pilih permainan favoritmu dan langsung bermain!</p>
+    <div class="logo">🎮 Arcade Hub</div>
+    <div class="subtitle">Pilih permainan favoritmu dan mulai bermain!</div>
   </header>
 
-  <!-- HOME / MENU -->
-  <main id="home" class="screen active-screen">
-    <section class="game-selection">
-      <div class="game-card" data-target="tictactoe-screen">
+  <!-- MAIN MENU -->
+  <main id="menu-screen" class="screen active">
+    <section class="menu-intro">
+      <h1>Selamat datang, CHIEF!</h1>
+      <p>
+        Ini adalah platform permainan mini. Pilih salah satu game di bawah untuk mulai bermain.
+      </p>
+    </section>
+
+    <section class="game-grid">
+      <!-- Tic Tac Toe -->
+      <article class="game-card" data-target="tic-tac-toe-screen">
+        <div class="game-icon">⭕❌</div>
         <h2>Tic Tac Toe</h2>
-        <p>Permainan klasik X dan O.</p>
-        <span class="badge">2 Player</span>
-      </div>
+        <p>Game klasik 3x3. Kalahkan lawanmu dengan tiga simbol berurutan.</p>
+        <button class="play-button">Play</button>
+      </article>
 
-      <div class="game-card" data-target="snake-screen">
+      <!-- Snake -->
+      <article class="game-card" data-target="snake-screen">
+        <div class="game-icon">🐍</div>
         <h2>Snake</h2>
-        <p>Kumpulkan buah, jangan tabrak tubuhmu sendiri.</p>
-        <span class="badge">Arcade</span>
-      </div>
+        <p>Kendalikan ular, makan makanan, dan jangan menabrak badan sendiri!</p>
+        <button class="play-button">Play</button>
+      </article>
 
-      <div class="game-card" data-target="flappy-screen">
+      <!-- Flappy Bird -->
+      <article class="game-card" data-target="flappy-screen">
+        <div class="game-icon">🐤</div>
         <h2>Flappy Bird</h2>
-        <p>Terbang melewati pipa tanpa menabrak.</p>
-        <span class="badge">Reflex</span>
-      </div>
+        <p>Tap untuk terbang dan hindari pipa-pipa yang menghalangi.</p>
+        <button class="play-button">Play</button>
+      </article>
 
-      <div class="game-card" data-target="solitaire-screen">
+      <!-- Solitaire -->
+      <article class="game-card" data-target="solitaire-screen">
+        <div class="game-icon">🃏</div>
         <h2>Solitaire</h2>
-        <p>Susun kartu ke foundation berdasarkan suit.</p>
-        <span class="badge">Card</span>
-      </div>
+        <p>Solitaire ala Klondike: stock, waste, dan tableau 7 kolom.</p>
+        <button class="play-button">Play</button>
+      </article>
 
-      <div class="game-card" data-target="hockey-screen">
+      <!-- Air Hockey -->
+      <article class="game-card" data-target="airhockey-screen">
+        <div class="game-icon">🏒</div>
         <h2>Air Hockey</h2>
-        <p>Masukkan puck ke gawang lawan.</p>
-        <span class="badge">2 Player</span>
-      </div>
+        <p>Gerakkan paddle dengan mouse dan gol-kan puck ke gawang lawan!</p>
+        <button class="play-button">Play</button>
+      </article>
     </section>
   </main>
 
-  <!-- TIC TAC TOE -->
-  <section id="tictactoe-screen" class="screen">
-    <div class="screen-header">
-      <button class="back-btn" data-back>⟵ Kembali</button>
+  <!-- TIC TAC TOE SCREEN -->
+  <section id="tic-tac-toe-screen" class="screen game-screen">
+    <div class="game-header">
+      <button class="back-button" data-back>← Kembali ke Menu</button>
       <h2>Tic Tac Toe</h2>
     </div>
-    <div class="game-container">
-      <div id="tictactoe-status" class="status-bar"></div>
-      <div class="tictactoe-grid">
-        <div class="cell" data-index="0"></div>
-        <div class="cell" data-index="1"></div>
-        <div class="cell" data-index="2"></div>
-        <div class="cell" data-index="3"></div>
-        <div class="cell" data-index="4"></div>
-        <div class="cell" data-index="5"></div>
-        <div class="cell" data-index="6"></div>
-        <div class="cell" data-index="7"></div>
-        <div class="cell" data-index="8"></div>
+    <div class="game-content center-column">
+      <div id="ttt-board" class="ttt-board"></div>
+      <div class="game-info">
+        <p id="ttt-status">Giliran: X</p>
+        <button id="ttt-restart" class="secondary-button">Restart</button>
       </div>
-      <button id="tictactoe-reset" class="primary-btn">Reset Game</button>
+      <p class="game-help">Klik kotak untuk menaruh X atau O. Dapatkan tiga simbol berurutan untuk menang.</p>
     </div>
   </section>
 
-  <!-- SNAKE -->
-  <section id="snake-screen" class="screen">
-    <div class="screen-header">
-      <button class="back-btn" data-back>⟵ Kembali</button>
+  <!-- SNAKE SCREEN -->
+  <section id="snake-screen" class="screen game-screen">
+    <div class="game-header">
+      <button class="back-button" data-back>← Kembali ke Menu</button>
       <h2>Snake</h2>
     </div>
-    <div class="game-container">
-      <div class="status-bar">
-        <span>Score: <span id="snake-score">0</span></span>
-        <span class="hint">Gunakan tombol panah untuk bergerak</span>
-      </div>
+    <div class="game-content center-column">
       <canvas id="snake-canvas" width="400" height="400"></canvas>
-      <button id="snake-start" class="primary-btn">Mulai / Restart</button>
+      <div class="game-info">
+        <p>Skor: <span id="snake-score">0</span></p>
+        <button id="snake-start" class="secondary-button">Mulai / Restart</button>
+      </div>
+      <p class="game-help">Gunakan tombol panah (atau WASD) untuk menggerakkan ular.</p>
     </div>
   </section>
 
-  <!-- FLAPPY BIRD -->
-  <section id="flappy-screen" class="screen">
-    <div class="screen-header">
-      <button class="back-btn" data-back>⟵ Kembali</button>
+  <!-- FLAPPY BIRD SCREEN -->
+  <section id="flappy-screen" class="screen game-screen">
+    <div class="game-header">
+      <button class="back-button" data-back>← Kembali ke Menu</button>
       <h2>Flappy Bird</h2>
     </div>
-    <div class="game-container">
-      <div class="status-bar">
-        <span>Score: <span id="flappy-score">0</span></span>
-        <span class="hint">Tekan spasi atau klik pada game untuk terbang</span>
+    <div class="game-content center-column">
+      <canvas id="flappy-canvas" width="400" height="500"></canvas>
+      <div class="game-info">
+        <p>Skor: <span id="flappy-score">0</span></p>
+        <button id="flappy-start" class="secondary-button">Mulai / Restart</button>
       </div>
-      <canvas id="flappy-canvas" width="400" height="550"></canvas>
-      <button id="flappy-start" class="primary-btn">Mulai / Restart</button>
+      <p class="game-help">Klik di area game atau tekan spasi untuk membuat burung terbang.</p>
     </div>
   </section>
 
-  <!-- SOLITAIRE (versi sederhana: deck + waste + 4 foundation) -->
-  <section id="solitaire-screen" class="screen">
-    <div class="screen-header">
-      <button class="back-btn" data-back>⟵ Kembali</button>
-      <h2>Solitaire (Simplified)</h2>
+  <!-- SOLITAIRE SCREEN (Klondike sederhana) -->
+  <section id="solitaire-screen" class="screen game-screen">
+    <div class="game-header">
+      <button class="back-button" data-back>← Kembali ke Menu</button>
+      <h2>Solitaire Sederhana</h2>
     </div>
-    <div class="game-container">
-      <div class="status-bar">
-        <span id="solitaire-status">Klik DECK untuk membalik kartu, klik kartu di WASTE untuk memindahkan ke foundation.</span>
-      </div>
-      <div class="solitaire-board">
-        <div class="sol-column">
-          <h3>Deck</h3>
-          <div id="sol-deck" class="card-stack deck"></div>
-        </div>
-        <div class="sol-column">
-          <h3>Waste</h3>
-          <div id="sol-waste" class="card-stack waste"></div>
-        </div>
-        <div class="sol-column">
-          <h3>Foundation</h3>
-          <div id="sol-foundations" class="foundation-row">
+    <div class="game-content">
+      <div class="solitaire-panel">
+        <div class="solitaire-top">
+          <div class="solitaire-stock-area">
+            <div id="solitaire-stock" class="pile stock" title="Klik untuk draw"></div>
+            <div id="solitaire-waste" class="pile waste" title="Kartu buangan"></div>
+          </div>
+          <div class="solitaire-foundations">
             <div class="foundation" data-foundation="0"></div>
             <div class="foundation" data-foundation="1"></div>
             <div class="foundation" data-foundation="2"></div>
             <div class="foundation" data-foundation="3"></div>
           </div>
+          <button id="solitaire-new" class="secondary-button">New Game</button>
         </div>
+
+        <div id="solitaire-tableau" class="solitaire-tableau"></div>
+
+        <p id="solitaire-status" class="game-help">
+          Aturan: Klik stock untuk draw kartu. Klik kartu face-up di tableau atau waste untuk memindah ke foundation (A → K, satu jenis kartu). Untuk saat ini, perpindahan antar kolom tableau belum diaktifkan.
+        </p>
       </div>
-      <button id="solitaire-new" class="primary-btn">Game Baru</button>
     </div>
   </section>
 
-  <!-- AIR HOCKEY -->
-  <section id="hockey-screen" class="screen">
-    <div class="screen-header">
-      <button class="back-btn" data-back>⟵ Kembali</button>
+  <!-- AIR HOCKEY SCREEN -->
+  <section id="airhockey-screen" class="screen game-screen">
+    <div class="game-header">
+      <button class="back-button" data-back>← Kembali ke Menu</button>
       <h2>Air Hockey</h2>
     </div>
-    <div class="game-container">
-      <div class="status-bar">
-        <span>Score: <span id="hockey-score-left">0</span> - <span id="hockey-score-right">0</span></span>
-        <span class="hint">P1: W/S · P2: ↑/↓</span>
+    <div class="game-content center-column">
+      <canvas id="airhockey-canvas" width="600" height="350"></canvas>
+      <div class="game-info">
+        <p>Skor Kamu: <span id="airhockey-player-score">0</span> | Skor AI: <span id="airhockey-ai-score">0</span></p>
+        <button id="airhockey-start" class="secondary-button">Mulai / Restart</button>
       </div>
-      <canvas id="hockey-canvas" width="600" height="300"></canvas>
-      <button id="hockey-start" class="primary-btn">Mulai / Restart</button>
+      <p class="game-help">Gerakkan mouse di atas arena untuk mengontrol paddle kamu (bawah). Cetak gol ke gawang atas (kotak tengah).</p>
     </div>
   </section>
 
   <footer class="main-footer">
-    <p>Arcade Hub &copy; 2025 · Built for fun 🎮</p>
+    Dibuat untuk eksperimen dan bersenang-senang. ✨
   </footer>
 
   <script src="script.js"></script>

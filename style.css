@@ -467,6 +467,34 @@ canvas {
   max-width: 100%;
 }
 
+/* ===== Tetris Layout ===== */
+.tetris-wrapper {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.tetris-side-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.tetris-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+#tetris-next {
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(15, 23, 42, 0.95);
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 640px) {
   .game-content {

@@ -62,6 +62,27 @@ function sfxHockeyHit() {
 function sfxHockeyGoal() {
   playBeep({ freq: 750, duration: 120, type: "triangle", volume: 0.22 });
 }
+function sfxTetrisMove() {
+  playBeep({ freq: 600, duration: 50, type: "square", volume: 0.15 });
+}
+function sfxTetrisRotate() {
+  playBeep({ freq: 750, duration: 70, type: "triangle", volume: 0.16 });
+}
+function sfxTetrisLine() {
+  playBeep({ freq: 900, duration: 120, type: "square", volume: 0.2 });
+}
+function sfxTetrisGameOver() {
+  playBeep({ freq: 200, duration: 220, type: "sawtooth", volume: 0.25 });
+}
+function sfxSubShoot() {
+  playBeep({ freq: 700, duration: 70, type: "square", volume: 0.2 });
+}
+function sfxSubHit() {
+  playBeep({ freq: 950, duration: 100, type: "triangle", volume: 0.22 });
+}
+function sfxSubGameOver() {
+  playBeep({ freq: 180, duration: 220, type: "sawtooth", volume: 0.25 });
+}
 
 // ========== NAVIGASI SCREEN ==========
 document.addEventListener("DOMContentLoaded", () => {
@@ -101,6 +122,8 @@ document.addEventListener("DOMContentLoaded", () => {
   initFlappy();
   initSolitaire();
   initAirHockey();
+  initTetris();
+  initSubmarine();
 });
 
 // ========== TIC TAC TOE ==========
@@ -479,16 +502,14 @@ function renderFlappy() {
   if (!flappyCtx) return;
   flappyCtx.clearRect(0, 0, flappyCanvas.width, flappyCanvas.height);
 
-  // Latar belakang sederhana
+  // Latar belakang
   flappyCtx.fillStyle = "#020617";
   flappyCtx.fillRect(0, 0, flappyCanvas.width, flappyCanvas.height);
 
   // Pipes
   flappyCtx.fillStyle = "#22c55e";
   flappyPipes.forEach((pipe) => {
-    // Atas
     flappyCtx.fillRect(pipe.x, 0, PIPE_WIDTH, pipe.gapY);
-    // Bawah
     flappyCtx.fillRect(
       pipe.x,
       pipe.gapY + PIPE_GAP,
@@ -548,8 +569,7 @@ function setupSolitaire() {
 
   createShuffledDeck();
 
-  // Bangun tableau: 7 kolom, kolom i berisi i+1 kartu,
-  // semua tertutup kecuali paling akhir.
+  // Bangun tableau
   for (let col = 0; col < 7; col++) {
     for (let i = 0; i <= col; i++) {
       const card = solitaireDeck.pop();
@@ -558,7 +578,7 @@ function setupSolitaire() {
     }
   }
 
-  // Sisa deck jadi stock (semua tertutup)
+  // Sisa deck jadi stock
   solitaireStock = [...solitaireDeck];
   solitaireDeck = [];
 
@@ -606,7 +626,7 @@ function renderSolitaire() {
     stockEl.textContent = "♻";
   }
 
-  // Waste (top card)
+  // Waste
   wasteEl.innerHTML = "";
   if (solitaireWaste.length > 0) {
     const top = solitaireWaste[solitaireWaste.length - 1];
@@ -635,7 +655,6 @@ function renderSolitaire() {
         ? createCardElement(cardObj)
         : createFaceDownCard();
       if (cardObj.faceUp && idx === column.length - 1) {
-        // hanya kartu paling atas & face-up yang bisa diklik
         cardEl.addEventListener("click", () =>
           handleTableauCardClick(cardObj, colIndex)
         );
@@ -672,7 +691,6 @@ function createFaceDownCard() {
 
 function drawFromStock() {
   if (solitaireStock.length === 0) {
-    // Jika stock habis, recycle waste ke stock
     while (solitaireWaste.length > 0) {
       solitaireStock.push(solitaireWaste.pop());
     }
@@ -700,7 +718,6 @@ function handleTableauCardClick(card, colIndex) {
 
   if (tryMoveCardToFoundation(card)) {
     column.pop();
-    // Jika kartu di bawahnya ada dan tertutup, buka satu
     const newTop = column[column.length - 1];
     if (newTop && !newTop.faceUp) newTop.faceUp = true;
     sfxSolitaireMove();
@@ -710,13 +727,11 @@ function handleTableauCardClick(card, colIndex) {
 }
 
 function tryMoveCardToFoundation(card) {
-  // Cari foundation yang bisa menerima kartu
   for (let i = 0; i < solitaireFoundations.length; i++) {
     const pile = solitaireFoundations[i];
     if (pile.length === 0) {
       if (card.value === 1) {
-        // As
-        solitaireFoundations[i].push(card);
+        pile.push(card);
         return true;
       }
     } else {
@@ -731,7 +746,6 @@ function tryMoveCardToFoundation(card) {
 }
 
 function checkSolitaireWin() {
-  // Menang jika semua kartu (52) ada di foundations
   const total = solitaireFoundations.reduce(
     (sum, pile) => sum + pile.length,
     0
@@ -746,7 +760,7 @@ function checkSolitaireWin() {
   }
 }
 
-// ========== AIR HOCKEY (bugfix gol hanya di gawang) ==========
+// ========== AIR HOCKEY (gawang fix) ==========
 let airCanvas,
   airCtx,
   airLoopId = null;
@@ -830,16 +844,15 @@ function updateAirHockey() {
   const w = airCanvas.width;
   const h = airCanvas.height;
 
-  // Pindahkan puck
   puck.x += puck.vx;
   puck.y += puck.vy;
 
-  // Pantul dengan dinding samping
+  // Dinding samping
   if (puck.x - puck.r < 0 || puck.x + puck.r > w) {
     puck.vx *= -1;
   }
 
-  // AI mengikuti puck
+  // AI follow
   const aiSpeed = 2.1;
   if (puck.x < aiPaddle.x - 5) {
     aiPaddle.x -= aiSpeed;
@@ -848,41 +861,36 @@ function updateAirHockey() {
   }
   aiPaddle.x = Math.max(aiPaddle.r, Math.min(w - aiPaddle.r, aiPaddle.x));
 
-  // Tabrakan dengan paddle (player & AI)
+  // Tabrakan paddle
   handlePaddleCollision(playerPaddle, true);
   handlePaddleCollision(aiPaddle, false);
 
-  // Cek goal hanya jika masuk area gawang (tengah)
   const goalLeft = w / 3;
   const goalRight = (2 * w) / 3;
 
-  // Atas: gawang player
+  // Gawang atas (player mencetak)
   if (puck.y - puck.r <= 0) {
     if (puck.x > goalLeft && puck.x < goalRight) {
-      // Goal untuk player
       airPlayerScore++;
       updateAirHockeyScore();
       sfxHockeyGoal();
       resetAirHockey();
       return;
     } else {
-      // Pantul dinding atas di luar gawang
       puck.vy *= -1;
       puck.y = puck.r;
     }
   }
 
-  // Bawah: gawang AI
+  // Gawang bawah (AI mencetak)
   if (puck.y + puck.r >= h) {
     if (puck.x > goalLeft && puck.x < goalRight) {
-      // Goal untuk AI
       airAiScore++;
       updateAirHockeyScore();
       sfxHockeyGoal();
       resetAirHockey();
       return;
     } else {
-      // Pantul dinding bawah di luar gawang
       puck.vy *= -1;
       puck.y = h - puck.r;
     }
@@ -896,15 +904,12 @@ function handlePaddleCollision(paddle, isPlayer) {
   const minDist = puck.r + paddle.r;
 
   if (dist < minDist) {
-    // Normalisasi
     const nx = dx / (dist || 1);
     const ny = dy / (dist || 1);
 
-    // Geser puck keluar dari paddle
     puck.x = paddle.x + nx * minDist;
     puck.y = paddle.y + ny * minDist;
 
-    // Refleksi kecepatan
     const speed = Math.sqrt(puck.vx * puck.vx + puck.vy * puck.vy) || 3;
     const dirY = isPlayer ? -1 : 1;
     puck.vx = nx * speed * 1.05;
@@ -920,12 +925,10 @@ function renderAirHockey() {
   const w = airCanvas.width;
   const h = airCanvas.height;
 
-  // Background
   airCtx.clearRect(0, 0, w, h);
   airCtx.fillStyle = "#020617";
   airCtx.fillRect(0, 0, w, h);
 
-  // Garis tengah
   airCtx.strokeStyle = "rgba(148, 163, 184, 0.5)";
   airCtx.setLineDash([8, 8]);
   airCtx.beginPath();
@@ -934,25 +937,21 @@ function renderAirHockey() {
   airCtx.stroke();
   airCtx.setLineDash([]);
 
-  // Area gawang (atas & bawah)
   airCtx.strokeStyle = "rgba(56, 189, 248, 0.5)";
   airCtx.lineWidth = 2;
-  airCtx.strokeRect(w / 3, 2, w / 3, 10); // atas
-  airCtx.strokeRect(w / 3, h - 12, w / 3, 10); // bawah
+  airCtx.strokeRect(w / 3, 2, w / 3, 10);
+  airCtx.strokeRect(w / 3, h - 12, w / 3, 10);
 
-  // Puck
   airCtx.fillStyle = "#e5e7eb";
   airCtx.beginPath();
   airCtx.arc(puck.x, puck.y, puck.r, 0, Math.PI * 2);
   airCtx.fill();
 
-  // Paddle player
   airCtx.fillStyle = "#38bdf8";
   airCtx.beginPath();
   airCtx.arc(playerPaddle.x, playerPaddle.y, playerPaddle.r, 0, Math.PI * 2);
   airCtx.fill();
 
-  // Paddle AI
   airCtx.fillStyle = "#f97373";
   airCtx.beginPath();
   airCtx.arc(aiPaddle.x, aiPaddle.y, aiPaddle.r, 0, Math.PI * 2);
@@ -964,4 +963,478 @@ function updateAirHockeyScore() {
   const aiEl = document.getElementById("airhockey-ai-score");
   if (pEl) pEl.textContent = airPlayerScore;
   if (aiEl) aiEl.textContent = airAiScore;
+}
+
+// ========== TETRIS ==========
+let tetrisCanvas,
+  tetrisCtx,
+  tetrisGrid,
+  tetrisCols = 10,
+  tetrisRows = 20,
+  tetrisTile = 20,
+  tetrisPiece = null,
+  tetrisScore = 0,
+  tetrisDropInterval = 500,
+  tetrisDropTimer = null,
+  tetrisRunning = false;
+
+const TETRIS_COLORS = [
+  "#000000",
+  "#f97373", // I
+  "#38bdf8", // J
+  "#22c55e", // L
+  "#eab308", // O
+  "#a855f7", // S
+  "#f97316", // T
+  "#06b6d4", // Z
+];
+
+const TETRIS_SHAPES = [
+  [],
+  [[1, 1, 1, 1]], // I
+  [
+    [2, 0, 0],
+    [2, 2, 2],
+  ], // J
+  [
+    [0, 0, 3],
+    [3, 3, 3],
+  ], // L
+  [
+    [4, 4],
+    [4, 4],
+  ], // O
+  [
+    [0, 5, 5],
+    [5, 5, 0],
+  ], // S
+  [
+    [0, 6, 0],
+    [6, 6, 6],
+  ], // T
+  [
+    [7, 7, 0],
+    [0, 7, 7],
+  ], // Z
+];
+
+function initTetris() {
+  tetrisCanvas = document.getElementById("tetris-canvas");
+  if (!tetrisCanvas) return;
+  tetrisCtx = tetrisCanvas.getContext("2d");
+
+  const startBtn = document.getElementById("tetris-start");
+  if (startBtn) startBtn.addEventListener("click", startTetris);
+
+  document.addEventListener("keydown", handleTetrisKey);
+  resetTetris();
+  drawTetris();
+}
+
+function resetTetris() {
+  tetrisGrid = Array.from({ length: tetrisRows }, () =>
+    Array(tetrisCols).fill(0)
+  );
+  tetrisScore = 0;
+  updateTetrisScore();
+  tetrisPiece = null;
+}
+
+function startTetris() {
+  resetTetris();
+  tetrisRunning = true;
+  spawnTetrisPiece();
+  if (tetrisDropTimer) clearInterval(tetrisDropTimer);
+  tetrisDropTimer = setInterval(tetrisStep, tetrisDropInterval);
+}
+
+function handleTetrisKey(e) {
+  if (!tetrisRunning || !tetrisPiece) return;
+  const key = e.key.toLowerCase();
+  if (key === "arrowleft") {
+    moveTetrisPiece(-1, 0);
+  } else if (key === "arrowright") {
+    moveTetrisPiece(1, 0);
+  } else if (key === "arrowdown") {
+    tetrisStep();
+  } else if (key === "arrowup") {
+    rotateTetrisPiece();
+  }
+}
+
+function spawnTetrisPiece() {
+  const type = 1 + Math.floor(Math.random() * 7);
+  const shape = TETRIS_SHAPES[type];
+  tetrisPiece = {
+    x: Math.floor(tetrisCols / 2) - Math.ceil(shape[0].length / 2),
+    y: 0,
+    shape: shape.map((row) => [...row]),
+  };
+  if (collides(tetrisPiece.shape, tetrisPiece.x, tetrisPiece.y)) {
+    endTetris();
+  }
+}
+
+function collides(shape, offsetX, offsetY) {
+  for (let y = 0; y < shape.length; y++) {
+    for (let x = 0; x < shape[y].length; x++) {
+      const val = shape[y][x];
+      if (val !== 0) {
+        const nx = offsetX + x;
+        const ny = offsetY + y;
+        if (
+          nx < 0 ||
+          nx >= tetrisCols ||
+          ny >= tetrisRows ||
+          (ny >= 0 && tetrisGrid[ny][nx] !== 0)
+        ) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function moveTetrisPiece(dx, dy) {
+  const newX = tetrisPiece.x + dx;
+  const newY = tetrisPiece.y + dy;
+  if (!collides(tetrisPiece.shape, newX, newY)) {
+    tetrisPiece.x = newX;
+    tetrisPiece.y = newY;
+    drawTetris();
+    sfxTetrisMove();
+  }
+}
+
+function rotateTetrisPiece() {
+  const oldShape = tetrisPiece.shape;
+  const rotated = oldShape[0].map((_, i) =>
+    oldShape.map((row) => row[i]).reverse()
+  );
+  if (!collides(rotated, tetrisPiece.x, tetrisPiece.y)) {
+    tetrisPiece.shape = rotated;
+    drawTetris();
+    sfxTetrisRotate();
+  }
+}
+
+function tetrisStep() {
+  if (!tetrisRunning || !tetrisPiece) return;
+  const newY = tetrisPiece.y + 1;
+  if (!collides(tetrisPiece.shape, tetrisPiece.x, newY)) {
+    tetrisPiece.y = newY;
+  } else {
+    // lock piece
+    for (let y = 0; y < tetrisPiece.shape.length; y++) {
+      for (let x = 0; x < tetrisPiece.shape[y].length; x++) {
+        const val = tetrisPiece.shape[y][x];
+        if (val !== 0) {
+          const gx = tetrisPiece.x + x;
+          const gy = tetrisPiece.y + y;
+          if (gy >= 0) tetrisGrid[gy][gx] = val;
+        }
+      }
+    }
+    clearTetrisLines();
+    spawnTetrisPiece();
+  }
+  drawTetris();
+}
+
+function clearTetrisLines() {
+  let lines = 0;
+  for (let y = tetrisRows - 1; y >= 0; y--) {
+    if (tetrisGrid[y].every((cell) => cell !== 0)) {
+      tetrisGrid.splice(y, 1);
+      tetrisGrid.unshift(Array(tetrisCols).fill(0));
+      lines++;
+      y++;
+    }
+  }
+  if (lines > 0) {
+    tetrisScore += lines * 100;
+    updateTetrisScore();
+    sfxTetrisLine();
+  }
+}
+
+function drawTetris() {
+  if (!tetrisCtx) return;
+  tetrisCtx.clearRect(0, 0, tetrisCanvas.width, tetrisCanvas.height);
+
+  // grid
+  for (let y = 0; y < tetrisRows; y++) {
+    for (let x = 0; x < tetrisCols; x++) {
+      const val = tetrisGrid[y][x];
+      if (val !== 0) {
+        tetrisCtx.fillStyle = TETRIS_COLORS[val];
+        tetrisCtx.fillRect(
+          x * tetrisTile,
+          y * tetrisTile,
+          tetrisTile - 1,
+          tetrisTile - 1
+        );
+      }
+    }
+  }
+
+  // piece
+  if (tetrisPiece) {
+    for (let y = 0; y < tetrisPiece.shape.length; y++) {
+      for (let x = 0; x < tetrisPiece.shape[y].length; x++) {
+        const val = tetrisPiece.shape[y][x];
+        if (val !== 0) {
+          const gx = tetrisPiece.x + x;
+          const gy = tetrisPiece.y + y;
+          if (gy >= 0) {
+            tetrisCtx.fillStyle = TETRIS_COLORS[val];
+            tetrisCtx.fillRect(
+              gx * tetrisTile,
+              gy * tetrisTile,
+              tetrisTile - 1,
+              tetrisTile - 1
+            );
+          }
+        }
+      }
+    }
+  }
+}
+
+function endTetris() {
+  tetrisRunning = false;
+  if (tetrisDropTimer) clearInterval(tetrisDropTimer);
+  tetrisDropTimer = null;
+  sfxTetrisGameOver();
+  alert("Game over! Skor Tetris kamu: " + tetrisScore);
+}
+
+function updateTetrisScore() {
+  const el = document.getElementById("tetris-score");
+  if (el) el.textContent = tetrisScore;
+}
+
+// ========== SUBMARINE BATTLE ==========
+let subCanvas,
+  subCtx,
+  subRunning = false,
+  submarine,
+  torpedoes = [],
+  enemies = [],
+  subScore = 0,
+  subLoopId = null,
+  subKeys = {},
+  lastShotTime = 0,
+  lastEnemySpawn = 0;
+
+function initSubmarine() {
+  subCanvas = document.getElementById("submarine-canvas");
+  if (!subCanvas) return;
+  subCtx = subCanvas.getContext("2d");
+
+  const startBtn = document.getElementById("submarine-start");
+  if (startBtn) startBtn.addEventListener("click", startSubmarine);
+
+  document.addEventListener("keydown", (e) => {
+    subKeys[e.code] = true;
+  });
+  document.addEventListener("keyup", (e) => {
+    subKeys[e.code] = false;
+  });
+
+  resetSubmarine();
+  renderSubmarine();
+}
+
+function resetSubmarine() {
+  submarine = {
+    x: 80,
+    y: subCanvas.height / 2,
+    vy: 0,
+    r: 14,
+  };
+  torpedoes = [];
+  enemies = [];
+  subScore = 0;
+  updateSubmarineScore();
+  lastShotTime = 0;
+  lastEnemySpawn = 0;
+}
+
+function startSubmarine() {
+  resetSubmarine();
+  subRunning = true;
+  if (subLoopId) cancelAnimationFrame(subLoopId);
+
+  let lastTime = performance.now();
+  const loop = (time) => {
+    if (!subRunning) return;
+    const delta = time - lastTime;
+    lastTime = time;
+    updateSubmarine(delta);
+    renderSubmarine();
+    subLoopId = requestAnimationFrame(loop);
+  };
+
+  subLoopId = requestAnimationFrame(loop);
+}
+
+function shootTorpedo(time) {
+  const cooldown = 250;
+  if (time - lastShotTime < cooldown) return;
+  lastShotTime = time;
+  torpedoes.push({
+    x: submarine.x + 20,
+    y: submarine.y,
+    vx: 4,
+  });
+  sfxSubShoot();
+}
+
+function spawnEnemy(time) {
+  const interval = 1200;
+  if (time - lastEnemySpawn < interval) return;
+  lastEnemySpawn = time;
+  enemies.push({
+    x: subCanvas.width + 20,
+    y: 40 + Math.random() * (subCanvas.height - 80),
+    vx: -2.2 - Math.random() * 0.8,
+    r: 16,
+  });
+}
+
+function updateSubmarine(delta) {
+  const timeNow = performance.now();
+
+  // Input gerak
+  const upPressed = subKeys["ArrowUp"] || subKeys["KeyW"];
+  const downPressed = subKeys["ArrowDown"] || subKeys["KeyS"];
+  if (upPressed && !downPressed) {
+    submarine.vy = -2.4;
+  } else if (downPressed && !upPressed) {
+    submarine.vy = 2.4;
+  } else {
+    submarine.vy *= 0.85;
+  }
+
+  submarine.y += submarine.vy;
+  submarine.y = Math.max(20, Math.min(subCanvas.height - 20, submarine.y));
+
+  // Shoot
+  if (subKeys["Space"]) {
+    shootTorpedo(timeNow);
+  }
+
+  // Update torpedo
+  torpedoes.forEach((t) => {
+    t.x += t.vx;
+  });
+  torpedoes = torpedoes.filter((t) => t.x < subCanvas.width + 30);
+
+  // Spawn enemy
+  spawnEnemy(timeNow);
+
+  // Update enemy
+  enemies.forEach((e) => {
+    e.x += e.vx;
+  });
+  enemies = enemies.filter((e) => e.x > -30);
+
+  // Cek hit torpedo-enemy
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    let hit = false;
+    for (let j = torpedoes.length - 1; j >= 0; j--) {
+      const dx = enemies[i].x - torpedoes[j].x;
+      const dy = enemies[i].y - torpedoes[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < enemies[i].r) {
+        // hancur
+        enemies.splice(i, 1);
+        torpedoes.splice(j, 1);
+        subScore += 10;
+        updateSubmarineScore();
+        sfxSubHit();
+        hit = true;
+        break;
+      }
+    }
+    if (hit) continue;
+  }
+
+  // Cek tabrakan musuh dengan kapal selam
+  for (const e of enemies) {
+    const dx = e.x - submarine.x;
+    const dy = e.y - submarine.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < e.r + submarine.r) {
+      endSubmarine();
+      return;
+    }
+  }
+}
+
+function renderSubmarine() {
+  if (!subCtx) return;
+  const w = subCanvas.width;
+  const h = subCanvas.height;
+
+  subCtx.clearRect(0, 0, w, h);
+  // Air
+  subCtx.fillStyle = "#020617";
+  subCtx.fillRect(0, 0, w, h);
+
+  // Sedikit gelembung
+  subCtx.strokeStyle = "rgba(148,163,184,0.2)";
+  for (let i = 0; i < 12; i++) {
+    const bx = (i * 50 + (performance.now() / 30)) % w;
+    const by = (i * 25) % h;
+    subCtx.beginPath();
+    subCtx.arc(bx, by, 3, 0, Math.PI * 2);
+    subCtx.stroke();
+  }
+
+  // Torpedoes
+  subCtx.fillStyle = "#e5e7eb";
+  torpedoes.forEach((t) => {
+    subCtx.fillRect(t.x - 6, t.y - 2, 12, 4);
+  });
+
+  // Enemies (mine / kapal musuh)
+  enemies.forEach((e) => {
+    subCtx.fillStyle = "#f97373";
+    subCtx.beginPath();
+    subCtx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+    subCtx.fill();
+    subCtx.strokeStyle = "#fecaca";
+    subCtx.beginPath();
+    subCtx.arc(e.x, e.y, e.r - 5, 0, Math.PI * 2);
+    subCtx.stroke();
+  });
+
+  // Submarine
+  subCtx.fillStyle = "#38bdf8";
+  subCtx.beginPath();
+  subCtx.ellipse(submarine.x, submarine.y, 24, 12, 0, 0, Math.PI * 2);
+  subCtx.fill();
+  // Tower
+  subCtx.fillRect(submarine.x - 6, submarine.y - 16, 12, 10);
+  // Window
+  subCtx.fillStyle = "#0f172a";
+  subCtx.beginPath();
+  subCtx.arc(submarine.x + 8, submarine.y, 4, 0, Math.PI * 2);
+  subCtx.fill();
+}
+
+function endSubmarine() {
+  subRunning = false;
+  if (subLoopId) cancelAnimationFrame(subLoopId);
+  subLoopId = null;
+  sfxSubGameOver();
+  alert("Kapal selam hancur! Skor kamu: " + subScore);
+}
+
+function updateSubmarineScore() {
+  const el = document.getElementById("submarine-score");
+  if (el) el.textContent = subScore;
 }

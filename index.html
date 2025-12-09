@@ -63,6 +63,22 @@
         <p>Gerakkan paddle dengan mouse dan gol-kan puck ke gawang lawan!</p>
         <button class="play-button">Play</button>
       </article>
+
+      <!-- Tetris -->
+      <article class="game-card" data-target="tetris-screen">
+        <div class="game-icon">🧱</div>
+        <h2>Tetris</h2>
+        <p>Susun balok jatuh dan lengkapi baris untuk mendapatkan skor.</p>
+        <button class="play-button">Play</button>
+      </article>
+
+      <!-- Submarine Battle -->
+      <article class="game-card" data-target="submarine-screen">
+        <div class="game-icon">🚢</div>
+        <h2>Submarine Battle</h2>
+        <p>Kendalikan kapal selam, tembak musuh, dan hindari tabrakan.</p>
+        <button class="play-button">Play</button>
+      </article>
     </section>
   </main>
 
@@ -114,7 +130,7 @@
     </div>
   </section>
 
-  <!-- SOLITAIRE SCREEN (Klondike sederhana) -->
+  <!-- SOLITAIRE SCREEN -->
   <section id="solitaire-screen" class="screen game-screen">
     <div class="game-header">
       <button class="back-button" data-back>← Kembali ke Menu</button>
@@ -158,6 +174,38 @@
         <button id="airhockey-start" class="secondary-button">Mulai / Restart</button>
       </div>
       <p class="game-help">Gerakkan mouse di atas arena untuk mengontrol paddle kamu (bawah). Cetak gol ke gawang atas (kotak tengah).</p>
+    </div>
+  </section>
+
+  <!-- TETRIS SCREEN -->
+  <section id="tetris-screen" class="screen game-screen">
+    <div class="game-header">
+      <button class="back-button" data-back>← Kembali ke Menu</button>
+      <h2>Tetris</h2>
+    </div>
+    <div class="game-content center-column">
+      <canvas id="tetris-canvas" width="240" height="400"></canvas>
+      <div class="game-info">
+        <p>Skor: <span id="tetris-score">0</span></p>
+        <button id="tetris-start" class="secondary-button">Mulai / Restart</button>
+      </div>
+      <p class="game-help">Panah kiri/kanan: geser • Panah atas: rotate • Panah bawah: percepat turun.</p>
+    </div>
+  </section>
+
+  <!-- SUBMARINE BATTLE SCREEN -->
+  <section id="submarine-screen" class="screen game-screen">
+    <div class="game-header">
+      <button class="back-button" data-back>← Kembali ke Menu</button>
+      <h2>Submarine Battle</h2>
+    </div>
+    <div class="game-content center-column">
+      <canvas id="submarine-canvas" width="600" height="350"></canvas>
+      <div class="game-info">
+        <p>Skor: <span id="submarine-score">0</span></p>
+        <button id="submarine-start" class="secondary-button">Mulai / Restart</button>
+      </div>
+      <p class="game-help">W/S atau ↑/↓ untuk naik-turun, Space untuk menembak torpedo.</p>
     </div>
   </section>
 

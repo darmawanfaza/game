@@ -76,7 +76,7 @@
       <article class="game-card" data-target="submarine-screen">
         <div class="game-icon">🚢</div>
         <h2>Submarine Battle</h2>
-        <p>Kendalikan kapal selam, tembak musuh, dan hindari tabrakan.</p>
+        <p>Shoot'em up: kendalikan kapal, tembak musuh, ambil power-up!</p>
         <button class="play-button">Play</button>
       </article>
     </section>
@@ -183,13 +183,19 @@
       <button class="back-button" data-back>← Kembali ke Menu</button>
       <h2>Tetris</h2>
     </div>
-    <div class="game-content center-column">
-      <canvas id="tetris-canvas" width="240" height="400"></canvas>
-      <div class="game-info">
-        <p>Skor: <span id="tetris-score">0</span></p>
-        <button id="tetris-start" class="secondary-button">Mulai / Restart</button>
+    <div class="game-content">
+      <div class="tetris-wrapper">
+        <canvas id="tetris-canvas" width="200" height="400"></canvas>
+        <div class="tetris-side-panel">
+          <p class="tetris-label">Next</p>
+          <canvas id="tetris-next" width="80" height="80"></canvas>
+          <p class="tetris-label">Skor: <span id="tetris-score">0</span></p>
+          <button id="tetris-start" class="secondary-button">Mulai / Restart</button>
+        </div>
       </div>
-      <p class="game-help">Panah kiri/kanan: geser • Panah atas: rotate • Panah bawah: percepat turun.</p>
+      <p class="game-help">
+        Panah kiri/kanan: geser • Panah atas: rotate • Panah bawah: percepat turun.
+      </p>
     </div>
   </section>
 
@@ -205,7 +211,10 @@
         <p>Skor: <span id="submarine-score">0</span></p>
         <button id="submarine-start" class="secondary-button">Mulai / Restart</button>
       </div>
-      <p class="game-help">W/S atau ↑/↓ untuk naik-turun, Space untuk menembak torpedo.</p>
+      <p class="game-help">
+        Gerak: WASD atau ↑↓←→ • Tembak: Space.
+        Ambil power-up yang jatuh: S = Speed Up, D = Double Shot, T = Spread Shot.
+      </p>
     </div>
   </section>
 

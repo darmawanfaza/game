@@ -1,5 +1,90 @@
-// ========== SISTEM AUDIO SEDERHANA ==========
+// =======================================
+// ARCADE HUB+ PLATFORM STATE & HELPERS
+// =======================================
+
+const STORAGE_KEY = "arcadeHubPlusState";
+
+const GAME_IDS = ["tic-tac-toe", "snake", "flappy", "airhockey", "tetris", "submarine"];
+const GAME_SCREENS = {
+  "tic-tac-toe": "tic-tac-toe-screen",
+  snake: "snake-screen",
+  flappy: "flappy-screen",
+  airhockey: "airhockey-screen",
+  tetris: "tetris-screen",
+  submarine: "submarine-screen",
+};
+const GAME_LABELS = {
+  "tic-tac-toe": "Tic Tac Toe",
+  snake: "Snake",
+  flappy: "Flappy Bird",
+  airhockey: "Air Hockey",
+  tetris: "Tetris",
+  submarine: "Submarine Battle",
+};
+
+let platformState = {
+  playerName: "CHIEF",
+  soundEnabled: true,
+  theme: "dark",
+  lastGameId: null,
+  totalPlayTimeMs: 0,
+  gamePlays: {
+    "tic-tac-toe": 0,
+    snake: 0,
+    flappy: 0,
+    airhockey: 0,
+    tetris: 0,
+    submarine: 0,
+  },
+  highscores: {
+    "tic-tac-toe": 0,
+    snake: 0,
+    flappy: 0,
+    airhockey: 0,
+    tetris: 0,
+    submarine: 0,
+  },
+  achievements: {
+    firstGame: false,
+    snake100: false,
+    flappy10: false,
+    submarine200: false,
+  },
+};
+
+// Active game session tracking
+let activeGameId = null;
+let activeGameStartTs = null;
+
+// ---- Storage helpers ----
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    platformState = {
+      ...platformState,
+      ...parsed,
+      gamePlays: { ...platformState.gamePlays, ...(parsed.gamePlays || {}) },
+      highscores: { ...platformState.highscores, ...(parsed.highscores || {}) },
+      achievements: { ...platformState.achievements, ...(parsed.achievements || {}) },
+    };
+  } catch (e) {
+    console.warn("Gagal load state:", e);
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(platformState));
+  } catch (e) {
+    console.warn("Gagal save state:", e);
+  }
+}
+
+// ---- Audio System (SFX) ----
 let audioCtx = null;
+let soundEnabled = true;
 
 function getAudioCtx() {
   if (!audioCtx) {
@@ -10,6 +95,7 @@ function getAudioCtx() {
 }
 
 function playBeep({ freq = 440, duration = 120, type = "sine", volume = 0.2 } = {}) {
+  if (!soundEnabled) return;
   const ctx = getAudioCtx();
   if (!ctx) return;
   const osc = ctx.createOscillator();
@@ -19,13 +105,12 @@ function playBeep({ freq = 440, duration = 120, type = "sine", volume = 0.2 } = 
   gain.gain.value = volume;
   osc.connect(gain);
   gain.connect(ctx.destination);
-
   const now = ctx.currentTime;
   osc.start(now);
   osc.stop(now + duration / 1000);
 }
 
-// Helper per game
+// UI/Game-specific SFX
 function sfxMenuClick() {
   playBeep({ freq: 650, duration: 80, type: "square", volume: 0.15 });
 }
@@ -49,12 +134,6 @@ function sfxFlappyScore() {
 }
 function sfxFlappyDie() {
   playBeep({ freq: 180, duration: 250, type: "sawtooth", volume: 0.25 });
-}
-function sfxSolitaireMove() {
-  playBeep({ freq: 620, duration: 80, type: "square", volume: 0.15 });
-}
-function sfxSolitaireWin() {
-  playBeep({ freq: 900, duration: 150, type: "triangle", volume: 0.25 });
 }
 function sfxHockeyHit() {
   playBeep({ freq: 500, duration: 60, type: "square", volume: 0.18 });
@@ -87,58 +166,489 @@ function sfxSubPower() {
   playBeep({ freq: 520, duration: 140, type: "triangle", volume: 0.22 });
 }
 
-// ========== NAVIGASI SCREEN ==========
+// ---- Platform stats helpers ----
+function endActiveGameSession() {
+  if (!activeGameId || activeGameStartTs == null) return;
+  const now = performance.now();
+  const dt = now - activeGameStartTs;
+  platformState.totalPlayTimeMs += dt;
+  activeGameId = null;
+  activeGameStartTs = null;
+  updateGlobalStats();
+  saveState();
+}
+
+function handleGameStart(gameId) {
+  endActiveGameSession();
+  activeGameId = gameId;
+  activeGameStartTs = performance.now();
+
+  if (!platformState.gamePlays[gameId]) platformState.gamePlays[gameId] = 0;
+  platformState.gamePlays[gameId] += 1;
+  platformState.lastGameId = gameId;
+
+  if (!platformState.achievements.firstGame) {
+    platformState.achievements.firstGame = true;
+  }
+
+  updateAchievementsUI();
+  updateGlobalStats();
+  saveState();
+}
+
+function handleGameEnd(gameId, score) {
+  endActiveGameSession();
+  if (typeof score === "number") {
+    const prev = platformState.highscores[gameId] || 0;
+    if (score > prev) {
+      platformState.highscores[gameId] = score;
+    }
+  }
+
+  if (gameId === "snake" && score >= 100) {
+    platformState.achievements.snake100 = true;
+  }
+  if (gameId === "flappy" && score >= 10) {
+    platformState.achievements.flappy10 = true;
+  }
+  if (gameId === "submarine" && score >= 200) {
+    platformState.achievements.submarine200 = true;
+  }
+
+  updateAllHighscoreDisplays();
+  updateAchievementsUI();
+  updateGlobalStats();
+  saveState();
+}
+
+function updateAllHighscoreDisplays() {
+  document.querySelectorAll("[data-highscore]").forEach((el) => {
+    const key = el.getAttribute("data-highscore");
+    const val = platformState.highscores[key] || 0;
+    el.textContent = val;
+  });
+}
+
+function updateAchievementsUI() {
+  const map = {
+    firstGame: "first-game",
+    snake100: "snake-100",
+    flappy10: "flappy-10",
+    submarine200: "submarine-200",
+  };
+
+  Object.entries(map).forEach(([stateKey, domId]) => {
+    const statusEl = document.querySelector(
+      `[data-achievement-status="${domId}"]`
+    );
+    if (!statusEl) return;
+    if (platformState.achievements[stateKey]) {
+      statusEl.textContent = "Unlocked";
+      statusEl.classList.add("unlocked");
+    } else {
+      statusEl.textContent = "Locked";
+      statusEl.classList.remove("unlocked");
+    }
+  });
+}
+
+function updateGlobalStats() {
+  const totalPlayed =
+    Object.values(platformState.gamePlays || {}).reduce((a, b) => a + b, 0) || 0;
+  const totalMinutes = Math.round(platformState.totalPlayTimeMs / 60000);
+
+  const favEl = document.getElementById("stat-favorite-game");
+  let favGame = "-";
+  let bestPlay = 0;
+  for (const gameId of GAME_IDS) {
+    const plays = platformState.gamePlays[gameId] || 0;
+    if (plays > bestPlay) {
+      bestPlay = plays;
+      favGame = GAME_LABELS[gameId];
+    }
+  }
+
+  const totalPlayedEl = document.getElementById("stat-total-played");
+  const totalTimeEl = document.getElementById("stat-total-time");
+  if (totalPlayedEl) totalPlayedEl.textContent = totalPlayed;
+  if (totalTimeEl) totalTimeEl.textContent = totalMinutes > 0 ? `${totalMinutes} m` : "0 m";
+  if (favEl) favEl.textContent = favGame;
+}
+
+function setPlayerNameUI(name) {
+  const disp = document.getElementById("player-name-display");
+  const avatar = document.getElementById("player-avatar");
+  if (disp) disp.textContent = name;
+  if (avatar) {
+    const initials = name
+      .split(" ")
+      .filter((p) => p.length > 0)
+      .slice(0, 2)
+      .map((p) => p[0].toUpperCase())
+      .join("");
+    avatar.innerHTML = `<span>${initials || "PL"}</span>`;
+  }
+}
+
+function applyTheme(theme) {
+  document.body.classList.remove("theme-neon");
+  if (theme === "neon") {
+    document.body.classList.add("theme-neon");
+  }
+  document.querySelectorAll(".theme-chip").forEach((chip) => {
+    const t = chip.getAttribute("data-theme");
+    chip.classList.toggle("active", t === theme);
+  });
+}
+
+// =======================================
+// GAME STATE DECLARATIONS (GLOBAL VARS)
+// =======================================
+
+// Snake
+let snakeCanvas,
+  snakeCtx,
+  snakeInterval = null,
+  snake,
+  snakeDir,
+  snakeFood,
+  snakeScore = 0;
+const SNAKE_TILE = 20;
+const SNAKE_SPEED_MS = 120;
+
+// Flappy
+let flappyCanvas,
+  flappyCtx,
+  flappyBird,
+  flappyPipes,
+  flappyScore,
+  flappyLoopId = null,
+  flappyRunning = false,
+  flappyPipeTimer = 0;
+const GRAVITY = 0.5;
+const FLAP_FORCE = -8;
+const PIPE_GAP = 130;
+const PIPE_WIDTH = 60;
+const PIPE_INTERVAL = 1600;
+
+// Air Hockey
+let airCanvas,
+  airCtx,
+  airLoopId = null;
+let puck,
+  playerPaddle,
+  aiPaddle,
+  airPlayerScore = 0,
+  airAiScore = 0;
+
+// Tetris
+let tetrisCanvas,
+  tetrisCtx,
+  tetrisNextCanvas,
+  tetrisNextCtx,
+  tetrisGrid,
+  tetrisCols = 10,
+  tetrisRows = 20,
+  tetrisTile = 20,
+  tetrisPiece = null,
+  tetrisNextType = null,
+  tetrisScore = 0,
+  tetrisDropInterval = 500,
+  tetrisDropTimer = null,
+  tetrisRunning = false;
+const TETRIS_COLORS = [
+  "#000000",
+  "#f97373",
+  "#38bdf8",
+  "#22c55e",
+  "#eab308",
+  "#a855f7",
+  "#f97316",
+  "#06b6d4",
+];
+const TETRIS_SHAPES = [
+  [],
+  [[1, 1, 1, 1]],
+  [
+    [2, 0, 0],
+    [2, 2, 2],
+  ],
+  [
+    [0, 0, 3],
+    [3, 3, 3],
+  ],
+  [
+    [4, 4],
+    [4, 4],
+  ],
+  [
+    [0, 5, 5],
+    [5, 5, 0],
+  ],
+  [
+    [0, 6, 0],
+    [6, 6, 6],
+  ],
+  [
+    [7, 7, 0],
+    [0, 7, 7],
+  ],
+];
+
+// Submarine
+let subCanvas,
+  subCtx,
+  subRunning = false,
+  submarine,
+  torpedoes = [],
+  enemies = [],
+  powerUps = [],
+  subScore = 0,
+  subLoopId = null,
+  subKeys = {},
+  lastShotTime = 0,
+  lastEnemySpawn = 0,
+  lastPowerSpawn = 0;
+
+// Tic Tac Toe
+let tttBoard = [];
+let tttCurrentPlayer = "X";
+let tttGameOver = false;
+
+// =======================================
+// STOP SEMUA GAME (saat pindah screen/menu)
+// =======================================
+function stopAllGames() {
+  endActiveGameSession();
+
+  if (snakeInterval) {
+    clearInterval(snakeInterval);
+    snakeInterval = null;
+  }
+
+  flappyRunning = false;
+  if (flappyLoopId) {
+    cancelAnimationFrame(flappyLoopId);
+    flappyLoopId = null;
+  }
+
+  if (airLoopId) {
+    cancelAnimationFrame(airLoopId);
+    airLoopId = null;
+  }
+
+  tetrisRunning = false;
+  if (tetrisDropTimer) {
+    clearInterval(tetrisDropTimer);
+    tetrisDropTimer = null;
+  }
+
+  subRunning = false;
+  if (subLoopId) {
+    cancelAnimationFrame(subLoopId);
+    subLoopId = null;
+  }
+}
+
+// =======================================
+// DOMContentLoaded MAIN INIT
+// =======================================
 document.addEventListener("DOMContentLoaded", () => {
+  loadState();
+  soundEnabled = platformState.soundEnabled;
+
+  setPlayerNameUI(platformState.playerName);
+  applyTheme(platformState.theme);
+  updateAllHighscoreDisplays();
+  updateAchievementsUI();
+  updateGlobalStats();
+
   const screens = document.querySelectorAll(".screen");
 
   function showScreen(id) {
     screens.forEach((s) => s.classList.remove("active"));
     const target = document.getElementById(id);
-    if (target) {
-      target.classList.add("active");
-    }
+    if (target) target.classList.add("active");
   }
 
-  // Klik kartu game -> pindah screen
+  function navigateToGameScreen(gameId) {
+    const screenId = GAME_SCREENS[gameId];
+    if (!screenId) return;
+    sfxMenuClick();
+    stopAllGames();
+    platformState.lastGameId = gameId;
+    saveState();
+    showScreen(screenId);
+  }
+
+  // Klik kartu game di menu
   document.querySelectorAll(".game-card").forEach((card) => {
     card.addEventListener("click", () => {
       const targetId = card.getAttribute("data-target");
+      const gameId = card.getAttribute("data-game-id");
       if (!targetId) return;
       sfxMenuClick();
+      stopAllGames();
+      if (gameId) {
+        platformState.lastGameId = gameId;
+        saveState();
+      }
       showScreen(targetId);
-
       if (targetId === "tic-tac-toe-screen") initTicTacToe();
     });
   });
 
-  // Tombol Back
+  // Tombol back ke menu
   document.querySelectorAll("[data-back]").forEach((btn) => {
     btn.addEventListener("click", () => {
       sfxMenuClick();
+      stopAllGames();
       showScreen("menu-screen");
     });
   });
 
-  // Inisialisasi game
+  // Quick actions
+  const btnContinueLast = document.getElementById("btn-continue-last");
+  if (btnContinueLast) {
+    btnContinueLast.addEventListener("click", () => {
+      const last = platformState.lastGameId;
+      if (last && GAME_SCREENS[last]) {
+        navigateToGameScreen(last);
+      } else {
+        navigateToGameScreen("snake");
+      }
+    });
+  }
+
+  const btnRandomGame = document.getElementById("btn-random-game");
+  if (btnRandomGame) {
+    btnRandomGame.addEventListener("click", () => {
+      const pick = GAME_IDS[Math.floor(Math.random() * GAME_IDS.length)];
+      navigateToGameScreen(pick);
+    });
+  }
+
+  // MODALS
+  function openModal(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeAllModals() {
+    document.querySelectorAll(".modal").forEach((m) =>
+      m.setAttribute("aria-hidden", "true")
+    );
+  }
+
+  const btnSettings = document.getElementById("btn-settings");
+  if (btnSettings) {
+    btnSettings.addEventListener("click", () => {
+      sfxMenuClick();
+      openModal("modal-settings");
+    });
+  }
+
+  const btnHowTo = document.getElementById("btn-how-to");
+  if (btnHowTo) {
+    btnHowTo.addEventListener("click", () => {
+      sfxMenuClick();
+      openModal("modal-howto");
+    });
+  }
+
+  // Edit nama player
+  const editNameBtn = document.getElementById("edit-name-button");
+  const nameInput = document.getElementById("player-name-input");
+  const nameSaveBtn = document.getElementById("player-name-save");
+
+  if (editNameBtn && nameInput && nameSaveBtn) {
+    editNameBtn.addEventListener("click", () => {
+      sfxMenuClick();
+      openModal("modal-name");
+      nameInput.value = platformState.playerName || "";
+      nameInput.focus();
+    });
+
+    nameSaveBtn.addEventListener("click", () => {
+      let val = nameInput.value.trim();
+      if (!val) val = "Player";
+      platformState.playerName = val;
+      setPlayerNameUI(val);
+      saveState();
+      closeAllModals();
+    });
+  }
+
+  // Close modal via tombol
+  document.querySelectorAll("[data-modal-close]").forEach((el) => {
+    el.addEventListener("click", () => {
+      closeAllModals();
+    });
+  });
+
+  // Close modal via backdrop
+  document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+    backdrop.addEventListener("click", () => {
+      closeAllModals();
+    });
+  });
+
+  // Settings: sound toggle
+  const soundToggle = document.getElementById("setting-sound-toggle");
+  if (soundToggle) {
+    soundToggle.setAttribute(
+      "data-sound-state",
+      platformState.soundEnabled ? "on" : "off"
+    );
+    soundEnabled = platformState.soundEnabled;
+
+    soundToggle.addEventListener("click", () => {
+      const current = soundToggle.getAttribute("data-sound-state");
+      const next = current === "on" ? "off" : "on";
+      soundToggle.setAttribute("data-sound-state", next);
+      platformState.soundEnabled = next === "on";
+      soundEnabled = platformState.soundEnabled;
+      saveState();
+      if (soundEnabled) sfxMenuClick();
+    });
+  }
+
+  // Settings: theme chips
+  document.querySelectorAll(".theme-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const theme = chip.getAttribute("data-theme") || "dark";
+      platformState.theme = theme;
+      applyTheme(theme);
+      saveState();
+      sfxMenuClick();
+    });
+  });
+
+  // INIT semua game
   initTicTacToe();
   initSnake();
   initFlappy();
-  initSolitaire();
   initAirHockey();
   initTetris();
   initSubmarine();
+
+  showScreen("menu-screen");
+
+  // Opsional: ketika berpindah tab / close, simpan waktu main
+  window.addEventListener("beforeunload", () => {
+    endActiveGameSession();
+  });
 });
 
-// ========== TIC TAC TOE ==========
-let tttBoard = [];
-let tttCurrentPlayer = "X";
-let tttGameOver = false;
+// =======================================
+// TIC TAC TOE
+// =======================================
 
 function initTicTacToe() {
   const boardEl = document.getElementById("ttt-board");
   const statusEl = document.getElementById("ttt-status");
   const restartBtn = document.getElementById("ttt-restart");
-
   if (!boardEl || !statusEl || !restartBtn) return;
 
   if (!boardEl.hasChildNodes()) {
@@ -160,11 +670,9 @@ function resetTicTacToe() {
   tttBoard = Array(9).fill("");
   tttCurrentPlayer = "X";
   tttGameOver = false;
-
   document.querySelectorAll(".ttt-cell").forEach((cell) => {
     cell.textContent = "";
   });
-
   const statusEl = document.getElementById("ttt-status");
   if (statusEl) statusEl.textContent = "Giliran: X";
 }
@@ -212,17 +720,9 @@ function checkTicTacToeWin(player) {
   return lines.some((line) => line.every((i) => b[i] === player));
 }
 
-// ========== SNAKE ==========
-let snakeCanvas,
-  snakeCtx,
-  snakeInterval = null,
-  snake,
-  snakeDir,
-  snakeFood,
-  snakeScore = 0;
-
-const SNAKE_TILE = 20;
-const SNAKE_SPEED_MS = 120;
+// =======================================
+// SNAKE
+// =======================================
 
 function initSnake() {
   snakeCanvas = document.getElementById("snake-canvas");
@@ -231,7 +731,10 @@ function initSnake() {
 
   const startBtn = document.getElementById("snake-start");
   if (startBtn) {
-    startBtn.addEventListener("click", startSnakeGame);
+    startBtn.addEventListener("click", () => {
+      handleGameStart("snake");
+      startSnakeGame();
+    });
   }
 
   document.addEventListener("keydown", handleSnakeKey);
@@ -240,6 +743,7 @@ function initSnake() {
 }
 
 function resetSnake() {
+  if (!snakeCanvas) return;
   const cols = Math.floor(snakeCanvas.width / SNAKE_TILE);
   const rows = Math.floor(snakeCanvas.height / SNAKE_TILE);
   const startX = Math.floor(cols / 2);
@@ -289,13 +793,11 @@ function updateSnake() {
 
   const head = { x: snake[0].x + snakeDir.x, y: snake[0].y + snakeDir.y };
 
-  // Tabrak dinding
   if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows) {
     endSnakeGame();
     return;
   }
 
-  // Tabrak badan
   if (snake.some((seg) => seg.x === head.x && seg.y === head.y)) {
     endSnakeGame();
     return;
@@ -303,7 +805,6 @@ function updateSnake() {
 
   snake.unshift(head);
 
-  // Makan
   if (head.x === snakeFood.x && head.y === snakeFood.y) {
     snakeScore += 10;
     updateSnakeScore();
@@ -320,7 +821,6 @@ function drawSnake() {
   if (!snakeCtx) return;
   snakeCtx.clearRect(0, 0, snakeCanvas.width, snakeCanvas.height);
 
-  // Snake
   snakeCtx.fillStyle = "#38bdf8";
   snake.forEach((seg, i) => {
     snakeCtx.globalAlpha = 0.7 + (snake.length - i) / (snake.length * 4);
@@ -333,7 +833,6 @@ function drawSnake() {
   });
   snakeCtx.globalAlpha = 1;
 
-  // Food
   if (snakeFood) {
     snakeCtx.fillStyle = "#f97373";
     snakeCtx.beginPath();
@@ -352,6 +851,7 @@ function endSnakeGame() {
   if (snakeInterval) clearInterval(snakeInterval);
   snakeInterval = null;
   sfxSnakeDie();
+  handleGameEnd("snake", snakeScore);
   alert("Game over! Skor kamu: " + snakeScore);
 }
 
@@ -360,21 +860,9 @@ function updateSnakeScore() {
   if (scoreEl) scoreEl.textContent = snakeScore;
 }
 
-// ========== FLAPPY BIRD ==========
-let flappyCanvas,
-  flappyCtx,
-  flappyBird,
-  flappyPipes,
-  flappyScore,
-  flappyLoopId = null,
-  flappyRunning = false,
-  flappyPipeTimer = 0;
-
-const GRAVITY = 0.5;
-const FLAP_FORCE = -8;
-const PIPE_GAP = 130;
-const PIPE_WIDTH = 60;
-const PIPE_INTERVAL = 1600; // ms
+// =======================================
+// FLAPPY BIRD
+// =======================================
 
 function initFlappy() {
   flappyCanvas = document.getElementById("flappy-canvas");
@@ -382,7 +870,12 @@ function initFlappy() {
   flappyCtx = flappyCanvas.getContext("2d");
 
   const startBtn = document.getElementById("flappy-start");
-  if (startBtn) startBtn.addEventListener("click", startFlappy);
+  if (startBtn) {
+    startBtn.addEventListener("click", () => {
+      handleGameStart("flappy");
+      startFlappy();
+    });
+  }
 
   flappyCanvas.addEventListener("mousedown", () => {
     if (!flappyRunning) return;
@@ -403,6 +896,7 @@ function initFlappy() {
 }
 
 function resetFlappy() {
+  if (!flappyCanvas) return;
   flappyBird = {
     x: 80,
     y: flappyCanvas.height / 2,
@@ -525,6 +1019,7 @@ function endFlappy() {
     flappyLoopId = null;
   }
   sfxFlappyDie();
+  handleGameEnd("flappy", flappyScore);
   alert("Game over! Skor kamu: " + flappyScore);
 }
 
@@ -533,229 +1028,9 @@ function updateFlappyScore() {
   if (el) el.textContent = flappyScore;
 }
 
-// ========== SOLITAIRE ==========
-let solitaireDeck = [];
-let solitaireStock = [];
-let solitaireWaste = [];
-let solitaireFoundations = [[], [], [], []];
-let solitaireTableau = [];
-
-function initSolitaire() {
-  const newBtn = document.getElementById("solitaire-new");
-  const stockEl = document.getElementById("solitaire-stock");
-  if (newBtn) {
-    newBtn.addEventListener("click", setupSolitaire);
-  }
-  if (stockEl) {
-    stockEl.addEventListener("click", drawFromStock);
-  }
-  setupSolitaire();
-}
-
-function setupSolitaire() {
-  const statusEl = document.getElementById("solitaire-status");
-  solitaireFoundations = [[], [], [], []];
-  solitaireStock = [];
-  solitaireWaste = [];
-  solitaireTableau = [[], [], [], [], [], [], []];
-
-  createShuffledDeck();
-
-  for (let col = 0; col < 7; col++) {
-    for (let i = 0; i <= col; i++) {
-      const card = solitaireDeck.pop();
-      const faceUp = i === col;
-      solitaireTableau[col].push({ ...card, faceUp });
-    }
-  }
-
-  solitaireStock = [...solitaireDeck];
-  solitaireDeck = [];
-
-  renderSolitaire();
-
-  if (statusEl) {
-    statusEl.textContent =
-      "Aturan: Klik stock untuk draw kartu. Klik kartu face-up di tableau atau waste untuk memindah ke foundation (A → K, satu jenis kartu).";
-  }
-}
-
-function createShuffledDeck() {
-  const suits = ["♠", "♥", "♦", "♣"];
-  const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
-  solitaireDeck = [];
-
-  suits.forEach((suit) => {
-    ranks.forEach((rank, idx) => {
-      const value = idx + 1;
-      solitaireDeck.push({ suit, rank, value });
-    });
-  });
-
-  for (let i = solitaireDeck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [solitaireDeck[i], solitaireDeck[j]] = [solitaireDeck[j], solitaireDeck[i]];
-  }
-}
-
-function renderSolitaire() {
-  const stockEl = document.getElementById("solitaire-stock");
-  const wasteEl = document.getElementById("solitaire-waste");
-  const tableauEl = document.getElementById("solitaire-tableau");
-  const foundationEls = document.querySelectorAll(".foundation");
-
-  if (!stockEl || !wasteEl || !tableauEl) return;
-
-  stockEl.innerHTML = "";
-  if (solitaireStock.length > 0) {
-    const backCard = document.createElement("div");
-    backCard.className = "card face-down";
-    stockEl.appendChild(backCard);
-  } else {
-    stockEl.textContent = "♻";
-  }
-
-  wasteEl.innerHTML = "";
-  if (solitaireWaste.length > 0) {
-    const top = solitaireWaste[solitaireWaste.length - 1];
-    const cardEl = createCardElement(top);
-    cardEl.addEventListener("click", () => handleWasteClick(top));
-    wasteEl.appendChild(cardEl);
-  }
-
-  foundationEls.forEach((fEl, idx) => {
-    fEl.textContent = "";
-    const pile = solitaireFoundations[idx];
-    if (pile.length > 0) {
-      const top = pile[pile.length - 1];
-      fEl.textContent = top.rank + top.suit;
-    }
-  });
-
-  tableauEl.innerHTML = "";
-  solitaireTableau.forEach((column, colIndex) => {
-    const colEl = document.createElement("div");
-    colEl.className = "tableau-column";
-    column.forEach((cardObj, idx) => {
-      const cardEl = cardObj.faceUp
-        ? createCardElement(cardObj)
-        : createFaceDownCard();
-      if (cardObj.faceUp && idx === column.length - 1) {
-        cardEl.addEventListener("click", () =>
-          handleTableauCardClick(cardObj, colIndex)
-        );
-      }
-      colEl.appendChild(cardEl);
-    });
-    tableauEl.appendChild(colEl);
-  });
-}
-
-function createCardElement(card) {
-  const el = document.createElement("div");
-  el.className = "card";
-  el.dataset.suit = card.suit;
-  el.dataset.rank = card.rank;
-  el.dataset.value = card.value;
-
-  const isRed = card.suit === "♥" || card.suit === "♦";
-  el.classList.add(isRed ? "red" : "black");
-
-  el.innerHTML = `
-    <span class="card-rank-top">${card.rank}</span>
-    <span class="card-suit-center">${card.suit}</span>
-    <span class="card-rank-bottom">${card.rank}</span>
-  `;
-  return el;
-}
-
-function createFaceDownCard() {
-  const el = document.createElement("div");
-  el.className = "card face-down";
-  return el;
-}
-
-function drawFromStock() {
-  if (solitaireStock.length === 0) {
-    while (solitaireWaste.length > 0) {
-      solitaireStock.push(solitaireWaste.pop());
-    }
-  } else {
-    const card = solitaireStock.pop();
-    solitaireWaste.push(card);
-  }
-  renderSolitaire();
-}
-
-function handleWasteClick(card) {
-  if (tryMoveCardToFoundation(card)) {
-    solitaireWaste.pop();
-    sfxSolitaireMove();
-    renderSolitaire();
-    checkSolitaireWin();
-  }
-}
-
-function handleTableauCardClick(card, colIndex) {
-  const column = solitaireTableau[colIndex];
-  const top = column[column.length - 1];
-  if (!top || !top.faceUp || top.value !== card.value || top.suit !== card.suit)
-    return;
-
-  if (tryMoveCardToFoundation(card)) {
-    column.pop();
-    const newTop = column[column.length - 1];
-    if (newTop && !newTop.faceUp) newTop.faceUp = true;
-    sfxSolitaireMove();
-    renderSolitaire();
-    checkSolitaireWin();
-  }
-}
-
-function tryMoveCardToFoundation(card) {
-  for (let i = 0; i < solitaireFoundations.length; i++) {
-    const pile = solitaireFoundations[i];
-    if (pile.length === 0) {
-      if (card.value === 1) {
-        pile.push(card);
-        return true;
-      }
-    } else {
-      const top = pile[pile.length - 1];
-      if (top.suit === card.suit && card.value === top.value + 1) {
-        pile.push(card);
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function checkSolitaireWin() {
-  const total = solitaireFoundations.reduce(
-    (sum, pile) => sum + pile.length,
-    0
-  );
-  const statusEl = document.getElementById("solitaire-status");
-  if (total === 52) {
-    if (statusEl) {
-      statusEl.textContent =
-        "Selamat! Semua kartu sudah berpindah ke foundation. 🎉";
-    }
-    sfxSolitaireWin();
-  }
-}
-
-// ========== AIR HOCKEY ==========
-let airCanvas,
-  airCtx,
-  airLoopId = null;
-
-let puck,
-  playerPaddle,
-  aiPaddle,
-  airPlayerScore = 0,
-  airAiScore = 0;
+// =======================================
+// AIR HOCKEY
+// =======================================
 
 function initAirHockey() {
   airCanvas = document.getElementById("airhockey-canvas");
@@ -763,7 +1038,12 @@ function initAirHockey() {
   airCtx = airCanvas.getContext("2d");
 
   const startBtn = document.getElementById("airhockey-start");
-  if (startBtn) startBtn.addEventListener("click", startAirHockey);
+  if (startBtn) {
+    startBtn.addEventListener("click", () => {
+      handleGameStart("airhockey");
+      startAirHockey();
+    });
+  }
 
   airCanvas.addEventListener("mousemove", handleAirMouseMove);
 
@@ -946,61 +1226,9 @@ function updateAirHockeyScore() {
   if (aiEl) aiEl.textContent = airAiScore;
 }
 
-// ========== TETRIS ==========
-let tetrisCanvas,
-  tetrisCtx,
-  tetrisNextCanvas,
-  tetrisNextCtx,
-  tetrisGrid,
-  tetrisCols = 10,
-  tetrisRows = 20,
-  tetrisTile = 20,
-  tetrisPiece = null,
-  tetrisNextType = null,
-  tetrisScore = 0,
-  tetrisDropInterval = 500,
-  tetrisDropTimer = null,
-  tetrisRunning = false;
-
-const TETRIS_COLORS = [
-  "#000000",
-  "#f97373",
-  "#38bdf8",
-  "#22c55e",
-  "#eab308",
-  "#a855f7",
-  "#f97316",
-  "#06b6d4",
-];
-
-const TETRIS_SHAPES = [
-  [],
-  [[1, 1, 1, 1]],
-  [
-    [2, 0, 0],
-    [2, 2, 2],
-  ],
-  [
-    [0, 0, 3],
-    [3, 3, 3],
-  ],
-  [
-    [4, 4],
-    [4, 4],
-  ],
-  [
-    [0, 5, 5],
-    [5, 5, 0],
-  ],
-  [
-    [0, 6, 0],
-    [6, 6, 6],
-  ],
-  [
-    [7, 7, 0],
-    [0, 7, 7],
-  ],
-];
+// =======================================
+// TETRIS
+// =======================================
 
 function initTetris() {
   tetrisCanvas = document.getElementById("tetris-canvas");
@@ -1013,7 +1241,12 @@ function initTetris() {
   }
 
   const startBtn = document.getElementById("tetris-start");
-  if (startBtn) startBtn.addEventListener("click", startTetris);
+  if (startBtn) {
+    startBtn.addEventListener("click", () => {
+      handleGameStart("tetris");
+      startTetris();
+    });
+  }
 
   document.addEventListener("keydown", handleTetrisKey);
   resetTetris();
@@ -1166,11 +1399,9 @@ function drawTetris() {
   const h = tetrisCanvas.height;
 
   tetrisCtx.clearRect(0, 0, w, h);
-
   tetrisCtx.fillStyle = "#020617";
   tetrisCtx.fillRect(0, 0, w, h);
 
-  // Grid
   tetrisCtx.strokeStyle = "rgba(148,163,184,0.2)";
   tetrisCtx.lineWidth = 0.5;
   for (let x = 0; x <= tetrisCols; x++) {
@@ -1188,7 +1419,6 @@ function drawTetris() {
     tetrisCtx.stroke();
   }
 
-  // Grid content
   for (let y = 0; y < tetrisRows; y++) {
     for (let x = 0; x < tetrisCols; x++) {
       const val = tetrisGrid[y][x];
@@ -1267,6 +1497,7 @@ function endTetris() {
   if (tetrisDropTimer) clearInterval(tetrisDropTimer);
   tetrisDropTimer = null;
   sfxTetrisGameOver();
+  handleGameEnd("tetris", tetrisScore);
   alert("Game over! Skor Tetris kamu: " + tetrisScore);
 }
 
@@ -1275,20 +1506,9 @@ function updateTetrisScore() {
   if (el) el.textContent = tetrisScore;
 }
 
-// ========== SUBMARINE BATTLE (SHOOT 'EM UP + HP + POWER-UP HUD) ==========
-let subCanvas,
-  subCtx,
-  subRunning = false,
-  submarine,
-  torpedoes = [],
-  enemies = [],
-  powerUps = [],
-  subScore = 0,
-  subLoopId = null,
-  subKeys = {},
-  lastShotTime = 0,
-  lastEnemySpawn = 0,
-  lastPowerSpawn = 0;
+// =======================================
+// SUBMARINE BATTLE
+// =======================================
 
 function initSubmarine() {
   subCanvas = document.getElementById("submarine-canvas");
@@ -1296,7 +1516,12 @@ function initSubmarine() {
   subCtx = subCanvas.getContext("2d");
 
   const startBtn = document.getElementById("submarine-start");
-  if (startBtn) startBtn.addEventListener("click", startSubmarine);
+  if (startBtn) {
+    startBtn.addEventListener("click", () => {
+      handleGameStart("submarine");
+      startSubmarine();
+    });
+  }
 
   document.addEventListener("keydown", (e) => {
     subKeys[e.code] = true;
@@ -1421,7 +1646,6 @@ function updateSubmarine(delta, timeNow) {
   powerUps = powerUps.filter((p) => p.y < h + 30);
 
   for (let i = enemies.length - 1; i >= 0; i--) {
-    let removed = false;
     for (let j = torpedoes.length - 1; j >= 0; j--) {
       const dx = enemies[i].x - torpedoes[j].x;
       const dy = enemies[i].y - torpedoes[j].y;
@@ -1431,14 +1655,13 @@ function updateSubmarine(delta, timeNow) {
         enemies[i].hp -= 1;
         if (enemies[i].hp <= 0) {
           subScore += enemies[i].score;
+          updateSubmarineScore();
           enemies.splice(i, 1);
           sfxSubHit();
         }
-        removed = true;
         break;
       }
     }
-    if (removed) continue;
   }
 
   for (const e of enemies) {
@@ -1618,7 +1841,6 @@ function renderSubmarine() {
     subCtx.fillText(label, p.x, p.y + 1);
   });
 
-  // Player (blink saat invincibility)
   const now = performance.now();
   const inv = now < submarine.invUntil;
   if (inv && Math.floor(now / 120) % 2 === 0) {
@@ -1647,7 +1869,6 @@ function renderSubmarine() {
 
   subCtx.globalAlpha = 1;
 
-  // HUD: HP (hearts)
   const hp = submarine.hp;
   const heartSize = 10;
   for (let i = 0; i < hp; i++) {
@@ -1662,7 +1883,6 @@ function renderSubmarine() {
     subCtx.fill();
   }
 
-  // HUD: power bars (top-right)
   const barWidth = 80;
   const barHeight = 6;
   const margin = 10;
@@ -1691,18 +1911,9 @@ function renderSubmarine() {
   }
 
   const nowMs = performance.now();
-  const speedFrac = Math.max(
-    0,
-    (submarine.speedUntil - nowMs) / 8000
-  );
-  const doubleFrac = Math.max(
-    0,
-    (submarine.doubleUntil - nowMs) / 9000
-  );
-  const spreadFrac = Math.max(
-    0,
-    (submarine.spreadUntil - nowMs) / 9000
-  );
+  const speedFrac = Math.max(0, (submarine.speedUntil - nowMs) / 8000);
+  const doubleFrac = Math.max(0, (submarine.doubleUntil - nowMs) / 9000);
+  const spreadFrac = Math.max(0, (submarine.spreadUntil - nowMs) / 9000);
 
   drawBar("SPD", speedFrac, "#38bdf8");
   drawBar("DBL", doubleFrac, "#eab308");
@@ -1714,6 +1925,7 @@ function endSubmarine() {
   if (subLoopId) cancelAnimationFrame(subLoopId);
   subLoopId = null;
   sfxSubGameOver();
+  handleGameEnd("submarine", subScore);
   alert("Kapalmu hancur! Skor kamu: " + subScore);
 }
 

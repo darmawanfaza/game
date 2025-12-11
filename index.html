@@ -38,7 +38,7 @@
 
       <div class="header-right">
         <button id="btn-how-to" class="header-pill-button">
-          ❔ Cara 
+          ❔ Cara Main
         </button>
         <button id="btn-settings" class="header-pill-button">
           ⚙️ Pengaturan
@@ -46,10 +46,10 @@
       </div>
     </header>
 
-    <!--  CONTENT AREA -->
-    < class="-layout">
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-layout">
       <!-- LEFT: MENU / HOME & GAME SCREENS -->
-      <section class="-left">
+      <section class="main-left">
         <!-- HOME / MENU SCREEN -->
         <section id="menu-screen" class="screen active">
           <div class="home-layout">
@@ -58,7 +58,7 @@
               <div class="welcome-chip">Selamat datang, CHIEF 👋</div>
               <h1>Arcade Hub+ Multi Game Platform</h1>
               <p>
-                Pilih peran favoritmu, pecahkan skor tertinggi, dan pantau progresmu di satu tempat.
+                Pilih permainan favoritmu, pecahkan skor tertinggi, dan pantau progresmu di satu tempat.
                 Kamu bisa lanjutkan game terakhir, pilih game acak, atau fokus di satu game saja.
               </p>
 
@@ -75,8 +75,8 @@
             <!-- Game Selection Grid -->
             <section class="game-grid-section">
               <div class="game-grid-header">
-                <h2>Daftar Peran</h2>
-                <p>Pilih game untuk dikan. Semua tersimpan dalam akun browser-mu.</p>
+                <h2>Daftar Permainan</h2>
+                <p>Pilih game untuk dimainkan. Semua tersimpan dalam akun browser-mu.</p>
               </div>
 
               <section class="game-grid">
@@ -235,6 +235,136 @@
                     </div>
                   </div>
                 </article>
+
+                <!-- 2048 -->
+                <article class="game-card" data-target="g2048-screen" data-game-id="game2048">
+                  <div class="game-card-top">
+                    <div class="game-icon">🔢</div>
+                    <div class="game-title-row">
+                      <h3>2048</h3>
+                      <span class="game-tag">Angka</span>
+                    </div>
+                    <p class="game-desc">
+                      Geser semua tile menggunakan tombol panah, gabungkan angka yang sama, dan capai 2048!
+                    </p>
+                  </div>
+                  <div class="game-card-bottom">
+                    <div class="game-meta">
+                      <span class="meta-item">Kontrol: Tombol Panah</span>
+                      <span class="meta-item">Single Player</span>
+                    </div>
+                    <div class="game-card-actions">
+                      <button class="play-button">Play</button>
+                      <div class="game-stat-inline">
+                        HS: <span data-highscore="game2048">0</span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <!-- Breakout -->
+                <article class="game-card" data-target="breakout-screen" data-game-id="breakout">
+                  <div class="game-card-top">
+                    <div class="game-icon">🧱🎾</div>
+                    <div class="game-title-row">
+                      <h3>Breakout</h3>
+                      <span class="game-tag">Refleks</span>
+                    </div>
+                    <p class="game-desc">
+                      Kendalikan paddle di bawah, pantulkan bola, dan hancurkan semua blok di atas tanpa menjatuhkan bola.
+                    </p>
+                  </div>
+                  <div class="game-card-bottom">
+                    <div class="game-meta">
+                      <span class="meta-item">Kontrol: Mouse / Panah</span>
+                      <span class="meta-item">Arcade</span>
+                    </div>
+                    <div class="game-card-actions">
+                      <button class="play-button">Play</button>
+                      <div class="game-stat-inline">
+                        HS: <span data-highscore="breakout">0</span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <!-- Space Shooter -->
+                <article class="game-card" data-target="space-screen" data-game-id="space">
+                  <div class="game-card-top">
+                    <div class="game-icon">👾</div>
+                    <div class="game-title-row">
+                      <h3>Space Shooter</h3>
+                      <span class="game-tag">Shooter</span>
+                    </div>
+                    <p class="game-desc">
+                      Gerakkan pesawat di bawah, tembak musuh yang datang dari atas, dan hindari peluru mereka.
+                    </p>
+                  </div>
+                  <div class="game-card-bottom">
+                    <div class="game-meta">
+                      <span class="meta-item">Kontrol: Panah + Spasi</span>
+                      <span class="meta-item">Gelombang Musuh</span>
+                    </div>
+                    <div class="game-card-actions">
+                      <button class="play-button">Play</button>
+                      <div class="game-stat-inline">
+                        HS: <span data-highscore="space">0</span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <!-- Pong -->
+                <article class="game-card" data-target="pong-screen" data-game-id="pong">
+                  <div class="game-card-top">
+                    <div class="game-icon">🏓</div>
+                    <div class="game-title-row">
+                      <h3>Pong</h3>
+                      <span class="game-tag">Dua Mode</span>
+                    </div>
+                    <p class="game-desc">
+                      Game paddle klasik, cocok untuk latihan refleks. Satu pemain melawan AI.
+                    </p>
+                  </div>
+                  <div class="game-card-bottom">
+                    <div class="game-meta">
+                      <span class="meta-item">Kontrol: Mouse / Panah</span>
+                      <span class="meta-item">1 vs AI</span>
+                    </div>
+                    <div class="game-card-actions">
+                      <button class="play-button">Play</button>
+                      <div class="game-stat-inline">
+                        HS: <span data-highscore="pong">0</span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <!-- Memory Match -->
+                <article class="game-card" data-target="memory-screen" data-game-id="memory">
+                  <div class="game-card-top">
+                    <div class="game-icon">🧠</div>
+                    <div class="game-title-row">
+                      <h3>Memory Match</h3>
+                      <span class="game-tag">Logika</span>
+                    </div>
+                    <p class="game-desc">
+                      Balik kartu dan temukan pasangan gambar yang sama. Cocok untuk melatih ingatan.
+                    </p>
+                  </div>
+                  <div class="game-card-bottom">
+                    <div class="game-meta">
+                      <span class="meta-item">Kontrol: Mouse / Sentuh</span>
+                      <span class="meta-item">Puzzle</span>
+                    </div>
+                    <div class="game-card-actions">
+                      <button class="play-button">Play</button>
+                      <div class="game-stat-inline">
+                        HS: <span data-highscore="memory">0</span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
               </section>
             </section>
           </div>
@@ -376,6 +506,122 @@
             </p>
           </div>
         </section>
+
+        <!-- 2048 SCREEN -->
+        <section id="g2048-screen" class="screen game-screen">
+          <div class="game-header">
+            <button class="back-button" data-back>← Kembali ke Menu</button>
+            <div class="game-header-main">
+              <h2>2048</h2>
+              <span class="game-subtitle">Gabungkan tile angka, capai 2048</span>
+            </div>
+          </div>
+          <div class="game-content center-column">
+            <div class="g2048-wrapper">
+              <div id="g2048-grid" class="g2048-grid">
+                <!-- tile akan di-generate lewat JS -->
+              </div>
+              <div class="game-info">
+                <p>Skor: <span id="g2048-score">0</span></p>
+                <button id="g2048-start" class="secondary-button">Mulai / Restart</button>
+              </div>
+              <p class="game-help">
+                Gunakan tombol panah untuk menggeser semua tile. Tile dengan angka sama akan bergabung menjadi angka yang
+                lebih besar. Coba capai 2048!
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- BREAKOUT SCREEN -->
+        <section id="breakout-screen" class="screen game-screen">
+          <div class="game-header">
+            <button class="back-button" data-back>← Kembali ke Menu</button>
+            <div class="game-header-main">
+              <h2>Breakout</h2>
+              <span class="game-subtitle">Pantulkan bola, hancurkan semua blok</span>
+            </div>
+          </div>
+          <div class="game-content center-column">
+            <canvas id="breakout-canvas" width="480" height="320"></canvas>
+            <div class="game-info">
+              <p>Skor: <span id="breakout-score">0</span></p>
+              <button id="breakout-start" class="secondary-button">Mulai / Restart</button>
+            </div>
+            <p class="game-help">
+              Gerakkan paddle di bawah dengan mouse atau tombol panah. Jangan biarkan bola jatuh. Hancurkan semua blok untuk
+              menyelesaikan level.
+            </p>
+          </div>
+        </section>
+
+        <!-- SPACE SHOOTER SCREEN -->
+        <section id="space-screen" class="screen game-screen">
+          <div class="game-header">
+            <button class="back-button" data-back>← Kembali ke Menu</button>
+            <div class="game-header-main">
+              <h2>Space Shooter</h2>
+              <span class="game-subtitle">Hancurkan invader dari luar angkasa</span>
+            </div>
+          </div>
+          <div class="game-content center-column">
+            <canvas id="space-canvas" width="480" height="320"></canvas>
+            <div class="game-info">
+              <p>Skor: <span id="space-score">0</span></p>
+              <button id="space-start" class="secondary-button">Mulai / Restart</button>
+            </div>
+            <p class="game-help">
+              Gerakkan pesawat di bagian bawah layar dengan tombol panah, dan gunakan Spasi untuk menembak.
+              Hancurkan musuh sebelum mereka mencapai kamu.
+            </p>
+          </div>
+        </section>
+
+        <!-- PONG SCREEN -->
+        <section id="pong-screen" class="screen game-screen">
+          <div class="game-header">
+            <button class="back-button" data-back>← Kembali ke Menu</button>
+            <div class="game-header-main">
+              <h2>Pong</h2>
+              <span class="game-subtitle">Game paddle klasik lawan AI</span>
+            </div>
+          </div>
+          <div class="game-content center-column">
+            <canvas id="pong-canvas" width="480" height="280"></canvas>
+            <div class="game-info">
+              <p>Skor: <span id="pong-score">0</span></p>
+              <button id="pong-start" class="secondary-button">Mulai / Restart</button>
+            </div>
+            <p class="game-help">
+              Gerakkan paddle di kiri dengan mouse atau tombol panah. Pantulkan bola dan cetak poin dengan
+              melewatkan bola ke sisi kanan.
+            </p>
+          </div>
+        </section>
+
+        <!-- MEMORY MATCH SCREEN -->
+        <section id="memory-screen" class="screen game-screen">
+          <div class="game-header">
+            <button class="back-button" data-back>← Kembali ke Menu</button>
+            <div class="game-header-main">
+              <h2>Memory Match</h2>
+              <span class="game-subtitle">Latih ingatanmu dengan mencari pasangan kartu</span>
+            </div>
+          </div>
+          <div class="game-content center-column">
+            <div id="memory-grid" class="memory-grid">
+              <!-- kartu akan di-generate lewat JS -->
+            </div>
+            <div class="game-info">
+              <p>Langkah: <span id="memory-steps">0</span></p>
+              <button id="memory-start" class="secondary-button">Mulai / Restart</button>
+            </div>
+            <p class="game-help">
+              Klik dua kartu untuk membaliknya. Jika sama, mereka akan tetap terbuka. Selesaikan semua pasangan
+              dengan langkah sesedikit mungkin.
+            </p>
+          </div>
+        </section>
       </section>
 
       <!-- RIGHT: GLOBAL STATS / ACHIEVEMENTS / INFO -->
@@ -434,6 +680,26 @@
             <li>
               <span>Submarine Battle</span>
               <span class="hs-value" data-highscore="submarine">0</span>
+            </li>
+            <li>
+              <span>2048</span>
+              <span class="hs-value" data-highscore="game2048">0</span>
+            </li>
+            <li>
+              <span>Breakout</span>
+              <span class="hs-value" data-highscore="breakout">0</span>
+            </li>
+            <li>
+              <span>Space Shooter</span>
+              <span class="hs-value" data-highscore="space">0</span>
+            </li>
+            <li>
+              <span>Pong</span>
+              <span class="hs-value" data-highscore="pong">0</span>
+            </li>
+            <li>
+              <span>Memory Match</span>
+              <span class="hs-value" data-highscore="memory">0</span>
             </li>
           </ul>
         </section>
@@ -610,6 +876,47 @@
               <li>Perhatikan bar HP dan bar durasi power-up di HUD kanan atas.</li>
             </ul>
           </section>
+          <section class="howto-item">
+            <h3>2048</h3>
+            <ul>
+              <li>Kontrol: Tombol panah.</li>
+              <li>Semua tile bergerak ke arah yang ditekan.</li>
+              <li>Tile dengan angka sama akan menyatu dan nilainya bertambah.</li>
+              <li>Cobalah capai tile bernilai 2048 (atau lebih!).</li>
+            </ul>
+          </section>
+          <section class="howto-item">
+            <h3>Breakout</h3>
+            <ul>
+              <li>Gerakkan paddle di bawah dengan mouse atau panah kiri/kanan.</li>
+              <li>Pantulkan bola untuk menghancurkan blok di atas.</li>
+              <li>Jangan biarkan bola jatuh melewati paddle.</li>
+            </ul>
+          </section>
+          <section class="howto-item">
+            <h3>Space Shooter</h3>
+            <ul>
+              <li>Gerakkan pesawat dengan panah kiri/kanan.</li>
+              <li>Gunakan Spasi untuk menembak musuh.</li>
+              <li>Hindari peluru dan jangan biarkan musuh menyentuhmu.</li>
+            </ul>
+          </section>
+          <section class="howto-item">
+            <h3>Pong</h3>
+            <ul>
+              <li>Gerakkan paddle di kiri dengan mouse atau tombol panah.</li>
+              <li>Pantulkan bola dan usahakan bola melewati paddle AI di kanan.</li>
+              <li>Pemain yang mencapai skor tertentu terlebih dahulu menang.</li>
+            </ul>
+          </section>
+          <section class="howto-item">
+            <h3>Memory Match</h3>
+            <ul>
+              <li>Klik dua kartu untuk membaliknya.</li>
+              <li>Jika gambarnya sama, kartu akan tetap terbuka.</li>
+              <li>Selesaikan semua pasangan dengan langkah sesedikit mungkin.</li>
+            </ul>
+          </section>
         </div>
       </div>
       <footer class="modal-footer">
@@ -651,4 +958,3 @@
   <script src="script.js"></script>
 </body>
 </html>
-

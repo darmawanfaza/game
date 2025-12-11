@@ -1,1935 +1,2388 @@
-// =======================================
-// ARCADE HUB+ PLATFORM STATE & HELPERS
-// =======================================
+document.addEventListener("DOMContentLoaded", () => {
+  /* =========================
+   *  GLOBAL ELEMENTS & STATE
+   * ========================= */
+  const body = document.body;
+  const screens = document.querySelectorAll(".screen");
+  const menuScreen = document.getElementById("menu-screen");
 
-const STORAGE_KEY = "arcadeHubPlusState";
+  const btnHowTo = document.getElementById("btn-how-to");
+  const btnSettings = document.getElementById("btn-settings");
+  const btnContinueLast = document.getElementById("btn-continue-last");
+  const btnRandomGame = document.getElementById("btn-random-game");
 
-const GAME_IDS = ["tic-tac-toe", "snake", "flappy", "airhockey", "tetris", "submarine"];
-const GAME_SCREENS = {
-  "tic-tac-toe": "tic-tac-toe-screen",
-  snake: "snake-screen",
-  flappy: "flappy-screen",
-  airhockey: "airhockey-screen",
-  tetris: "tetris-screen",
-  submarine: "submarine-screen",
-};
-const GAME_LABELS = {
-  "tic-tac-toe": "Tic Tac Toe",
-  snake: "Snake",
-  flappy: "Flappy Bird",
-  airhockey: "Air Hockey",
-  tetris: "Tetris",
-  submarine: "Submarine Battle",
-};
+  const modalSettings = document.getElementById("modal-settings");
+  const modalHowTo = document.getElementById("modal-howto");
+  const modalName = document.getElementById("modal-name");
 
-let platformState = {
-  playerName: "CHIEF",
-  soundEnabled: true,
-  theme: "dark",
-  lastGameId: null,
-  totalPlayTimeMs: 0,
-  gamePlays: {
-    "tic-tac-toe": 0,
-    snake: 0,
-    flappy: 0,
-    airhockey: 0,
-    tetris: 0,
-    submarine: 0,
-  },
-  highscores: {
-    "tic-tac-toe": 0,
-    snake: 0,
-    flappy: 0,
-    airhockey: 0,
-    tetris: 0,
-    submarine: 0,
-  },
-  achievements: {
-    firstGame: false,
-    snake100: false,
-    flappy10: false,
-    submarine200: false,
-  },
-};
+  const settingSoundToggle = document.getElementById("setting-sound-toggle");
+  const themeChips = document.querySelectorAll(".theme-chip");
 
-// Active game session tracking
-let activeGameId = null;
-let activeGameStartTs = null;
+  const playerNameDisplay = document.getElementById("player-name-display");
+  const editNameButton = document.getElementById("edit-name-button");
+  const playerNameInput = document.getElementById("player-name-input");
+  const playerNameSave = document.getElementById("player-name-save");
+  const playerAvatar = document.getElementById("player-avatar");
 
-// ---- Storage helpers ----
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    platformState = {
-      ...platformState,
-      ...parsed,
-      gamePlays: { ...platformState.gamePlays, ...(parsed.gamePlays || {}) },
-      highscores: { ...platformState.highscores, ...(parsed.highscores || {}) },
-      achievements: { ...platformState.achievements, ...(parsed.achievements || {}) },
-    };
-  } catch (e) {
-    console.warn("Gagal load state:", e);
-  }
-}
+  const statTotalPlayed = document.getElementById("stat-total-played");
+  const statTotalTime = document.getElementById("stat-total-time");
+  const statFavoriteGame = document.getElementById("stat-favorite-game");
 
-function saveState() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(platformState));
-  } catch (e) {
-    console.warn("Gagal save state:", e);
-  }
-}
+  const achievementStatuses = document.querySelectorAll("[data-achievement-status]");
 
-// ---- Audio System (SFX) ----
-let audioCtx = null;
-let soundEnabled = true;
+  const gameCards = document.querySelectorAll(".game-card");
+  const backButtons = document.querySelectorAll("[data-back]");
 
-function getAudioCtx() {
-  if (!audioCtx) {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (Ctx) audioCtx = new Ctx();
-  }
-  return audioCtx;
-}
-
-function playBeep({ freq = 440, duration = 120, type = "sine", volume = 0.2 } = {}) {
-  if (!soundEnabled) return;
-  const ctx = getAudioCtx();
-  if (!ctx) return;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.value = freq;
-  gain.gain.value = volume;
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  const now = ctx.currentTime;
-  osc.start(now);
-  osc.stop(now + duration / 1000);
-}
-
-// UI/Game-specific SFX
-function sfxMenuClick() {
-  playBeep({ freq: 650, duration: 80, type: "square", volume: 0.15 });
-}
-function sfxTicMove() {
-  playBeep({ freq: 550, duration: 70, type: "triangle", volume: 0.15 });
-}
-function sfxTicWin() {
-  playBeep({ freq: 800, duration: 160, type: "square", volume: 0.2 });
-}
-function sfxSnakeEat() {
-  playBeep({ freq: 700, duration: 90, type: "square", volume: 0.2 });
-}
-function sfxSnakeDie() {
-  playBeep({ freq: 200, duration: 200, type: "sawtooth", volume: 0.25 });
-}
-function sfxFlap() {
-  playBeep({ freq: 900, duration: 50, type: "square", volume: 0.15 });
-}
-function sfxFlappyScore() {
-  playBeep({ freq: 1000, duration: 90, type: "triangle", volume: 0.2 });
-}
-function sfxFlappyDie() {
-  playBeep({ freq: 180, duration: 250, type: "sawtooth", volume: 0.25 });
-}
-function sfxHockeyHit() {
-  playBeep({ freq: 500, duration: 60, type: "square", volume: 0.18 });
-}
-function sfxHockeyGoal() {
-  playBeep({ freq: 750, duration: 120, type: "triangle", volume: 0.22 });
-}
-function sfxTetrisMove() {
-  playBeep({ freq: 600, duration: 50, type: "square", volume: 0.15 });
-}
-function sfxTetrisRotate() {
-  playBeep({ freq: 750, duration: 70, type: "triangle", volume: 0.16 });
-}
-function sfxTetrisLine() {
-  playBeep({ freq: 900, duration: 120, type: "square", volume: 0.2 });
-}
-function sfxTetrisGameOver() {
-  playBeep({ freq: 200, duration: 220, type: "sawtooth", volume: 0.25 });
-}
-function sfxSubShoot() {
-  playBeep({ freq: 700, duration: 70, type: "square", volume: 0.2 });
-}
-function sfxSubHit() {
-  playBeep({ freq: 950, duration: 100, type: "triangle", volume: 0.22 });
-}
-function sfxSubGameOver() {
-  playBeep({ freq: 180, duration: 220, type: "sawtooth", volume: 0.25 });
-}
-function sfxSubPower() {
-  playBeep({ freq: 520, duration: 140, type: "triangle", volume: 0.22 });
-}
-
-// ---- Platform stats helpers ----
-function endActiveGameSession() {
-  if (!activeGameId || activeGameStartTs == null) return;
-  const now = performance.now();
-  const dt = now - activeGameStartTs;
-  platformState.totalPlayTimeMs += dt;
-  activeGameId = null;
-  activeGameStartTs = null;
-  updateGlobalStats();
-  saveState();
-}
-
-function handleGameStart(gameId) {
-  endActiveGameSession();
-  activeGameId = gameId;
-  activeGameStartTs = performance.now();
-
-  if (!platformState.gamePlays[gameId]) platformState.gamePlays[gameId] = 0;
-  platformState.gamePlays[gameId] += 1;
-  platformState.lastGameId = gameId;
-
-  if (!platformState.achievements.firstGame) {
-    platformState.achievements.firstGame = true;
-  }
-
-  updateAchievementsUI();
-  updateGlobalStats();
-  saveState();
-}
-
-function handleGameEnd(gameId, score) {
-  endActiveGameSession();
-  if (typeof score === "number") {
-    const prev = platformState.highscores[gameId] || 0;
-    if (score > prev) {
-      platformState.highscores[gameId] = score;
-    }
-  }
-
-  if (gameId === "snake" && score >= 100) {
-    platformState.achievements.snake100 = true;
-  }
-  if (gameId === "flappy" && score >= 10) {
-    platformState.achievements.flappy10 = true;
-  }
-  if (gameId === "submarine" && score >= 200) {
-    platformState.achievements.submarine200 = true;
-  }
-
-  updateAllHighscoreDisplays();
-  updateAchievementsUI();
-  updateGlobalStats();
-  saveState();
-}
-
-function updateAllHighscoreDisplays() {
-  document.querySelectorAll("[data-highscore]").forEach((el) => {
-    const key = el.getAttribute("data-highscore");
-    const val = platformState.highscores[key] || 0;
-    el.textContent = val;
+  // Highscore elements appear multiple times
+  const highscoreElsByGame = {};
+  document.querySelectorAll("[data-highscore]").forEach(el => {
+    const gameId = el.getAttribute("data-highscore");
+    if (!highscoreElsByGame[gameId]) highscoreElsByGame[gameId] = [];
+    highscoreElsByGame[gameId].push(el);
   });
-}
 
-function updateAchievementsUI() {
-  const map = {
-    firstGame: "first-game",
-    snake100: "snake-100",
-    flappy10: "flappy-10",
-    submarine200: "submarine-200",
+  const gameIdToScreenId = {
+    "tic-tac-toe": "tic-tac-toe-screen",
+    "snake": "snake-screen",
+    "flappy": "flappy-screen",
+    "airhockey": "airhockey-screen",
+    "tetris": "tetris-screen",
+    "submarine": "submarine-screen",
+    "game2048": "g2048-screen",
+    "breakout": "breakout-screen",
+    "space": "space-screen",
+    "pong": "pong-screen",
+    "memory": "memory-screen"
   };
 
-  Object.entries(map).forEach(([stateKey, domId]) => {
-    const statusEl = document.querySelector(
-      `[data-achievement-status="${domId}"]`
-    );
-    if (!statusEl) return;
-    if (platformState.achievements[stateKey]) {
-      statusEl.textContent = "Unlocked";
-      statusEl.classList.add("unlocked");
-    } else {
-      statusEl.textContent = "Locked";
-      statusEl.classList.remove("unlocked");
-    }
-  });
-}
+  const allGameIds = Object.keys(gameIdToScreenId);
 
-function updateGlobalStats() {
-  const totalPlayed =
-    Object.values(platformState.gamePlays || {}).reduce((a, b) => a + b, 0) || 0;
-  const totalMinutes = Math.round(platformState.totalPlayTimeMs / 60000);
+  const state = {
+    currentScreenId: "menu-screen",
+    lastGameId: null,
+    soundOn: true,
+    theme: "dark",
+    totalGamesPlayed: 0,
+    totalPlayTimeMs: 0,
+    currentGameStartTime: null,
+    highScores: {},
+    gamePlayCount: {}, // for favorite game
+  };
 
-  const favEl = document.getElementById("stat-favorite-game");
-  let favGame = "-";
-  let bestPlay = 0;
-  for (const gameId of GAME_IDS) {
-    const plays = platformState.gamePlays[gameId] || 0;
-    if (plays > bestPlay) {
-      bestPlay = plays;
-      favGame = GAME_LABELS[gameId];
-    }
-  }
+  let audioCtx = null;
 
-  const totalPlayedEl = document.getElementById("stat-total-played");
-  const totalTimeEl = document.getElementById("stat-total-time");
-  if (totalPlayedEl) totalPlayedEl.textContent = totalPlayed;
-  if (totalTimeEl) totalTimeEl.textContent = totalMinutes > 0 ? `${totalMinutes} m` : "0 m";
-  if (favEl) favEl.textContent = favGame;
-}
-
-function setPlayerNameUI(name) {
-  const disp = document.getElementById("player-name-display");
-  const avatar = document.getElementById("player-avatar");
-  if (disp) disp.textContent = name;
-  if (avatar) {
-    const initials = name
-      .split(" ")
-      .filter((p) => p.length > 0)
-      .slice(0, 2)
-      .map((p) => p[0].toUpperCase())
-      .join("");
-    avatar.innerHTML = `<span>${initials || "PL"}</span>`;
-  }
-}
-
-function applyTheme(theme) {
-  document.body.classList.remove("theme-neon");
-  if (theme === "neon") {
-    document.body.classList.add("theme-neon");
-  }
-  document.querySelectorAll(".theme-chip").forEach((chip) => {
-    const t = chip.getAttribute("data-theme");
-    chip.classList.toggle("active", t === theme);
-  });
-}
-
-// =======================================
-// GAME STATE DECLARATIONS (GLOBAL VARS)
-// =======================================
-
-// Snake
-let snakeCanvas,
-  snakeCtx,
-  snakeInterval = null,
-  snake,
-  snakeDir,
-  snakeFood,
-  snakeScore = 0;
-const SNAKE_TILE = 20;
-const SNAKE_SPEED_MS = 120;
-
-// Flappy
-let flappyCanvas,
-  flappyCtx,
-  flappyBird,
-  flappyPipes,
-  flappyScore,
-  flappyLoopId = null,
-  flappyRunning = false,
-  flappyPipeTimer = 0;
-const GRAVITY = 0.5;
-const FLAP_FORCE = -8;
-const PIPE_GAP = 130;
-const PIPE_WIDTH = 60;
-const PIPE_INTERVAL = 1600;
-
-// Air Hockey
-let airCanvas,
-  airCtx,
-  airLoopId = null;
-let puck,
-  playerPaddle,
-  aiPaddle,
-  airPlayerScore = 0,
-  airAiScore = 0;
-
-// Tetris
-let tetrisCanvas,
-  tetrisCtx,
-  tetrisNextCanvas,
-  tetrisNextCtx,
-  tetrisGrid,
-  tetrisCols = 10,
-  tetrisRows = 20,
-  tetrisTile = 20,
-  tetrisPiece = null,
-  tetrisNextType = null,
-  tetrisScore = 0,
-  tetrisDropInterval = 500,
-  tetrisDropTimer = null,
-  tetrisRunning = false;
-const TETRIS_COLORS = [
-  "#000000",
-  "#f97373",
-  "#38bdf8",
-  "#22c55e",
-  "#eab308",
-  "#a855f7",
-  "#f97316",
-  "#06b6d4",
-];
-const TETRIS_SHAPES = [
-  [],
-  [[1, 1, 1, 1]],
-  [
-    [2, 0, 0],
-    [2, 2, 2],
-  ],
-  [
-    [0, 0, 3],
-    [3, 3, 3],
-  ],
-  [
-    [4, 4],
-    [4, 4],
-  ],
-  [
-    [0, 5, 5],
-    [5, 5, 0],
-  ],
-  [
-    [0, 6, 0],
-    [6, 6, 6],
-  ],
-  [
-    [7, 7, 0],
-    [0, 7, 7],
-  ],
-];
-
-// Submarine
-let subCanvas,
-  subCtx,
-  subRunning = false,
-  submarine,
-  torpedoes = [],
-  enemies = [],
-  powerUps = [],
-  subScore = 0,
-  subLoopId = null,
-  subKeys = {},
-  lastShotTime = 0,
-  lastEnemySpawn = 0,
-  lastPowerSpawn = 0;
-
-// Tic Tac Toe
-let tttBoard = [];
-let tttCurrentPlayer = "X";
-let tttGameOver = false;
-
-// =======================================
-// STOP SEMUA GAME (saat pindah screen/menu)
-// =======================================
-function stopAllGames() {
-  endActiveGameSession();
-
-  if (snakeInterval) {
-    clearInterval(snakeInterval);
-    snakeInterval = null;
-  }
-
-  flappyRunning = false;
-  if (flappyLoopId) {
-    cancelAnimationFrame(flappyLoopId);
-    flappyLoopId = null;
-  }
-
-  if (airLoopId) {
-    cancelAnimationFrame(airLoopId);
-    airLoopId = null;
-  }
-
-  tetrisRunning = false;
-  if (tetrisDropTimer) {
-    clearInterval(tetrisDropTimer);
-    tetrisDropTimer = null;
-  }
-
-  subRunning = false;
-  if (subLoopId) {
-    cancelAnimationFrame(subLoopId);
-    subLoopId = null;
-  }
-}
-
-// =======================================
-// DOMContentLoaded MAIN INIT
-// =======================================
-document.addEventListener("DOMContentLoaded", () => {
-  loadState();
-  soundEnabled = platformState.soundEnabled;
-
-  setPlayerNameUI(platformState.playerName);
-  applyTheme(platformState.theme);
-  updateAllHighscoreDisplays();
-  updateAchievementsUI();
-  updateGlobalStats();
-
-  const screens = document.querySelectorAll(".screen");
-
-  function showScreen(id) {
-    screens.forEach((s) => s.classList.remove("active"));
-    const target = document.getElementById(id);
-    if (target) target.classList.add("active");
-  }
-
-  function navigateToGameScreen(gameId) {
-    const screenId = GAME_SCREENS[gameId];
-    if (!screenId) return;
-    sfxMenuClick();
-    stopAllGames();
-    platformState.lastGameId = gameId;
-    saveState();
-    showScreen(screenId);
-  }
-
-  // Klik kartu game di menu
-  document.querySelectorAll(".game-card").forEach((card) => {
-    card.addEventListener("click", () => {
-      const targetId = card.getAttribute("data-target");
-      const gameId = card.getAttribute("data-game-id");
-      if (!targetId) return;
-      sfxMenuClick();
-      stopAllGames();
-      if (gameId) {
-        platformState.lastGameId = gameId;
-        saveState();
+  function initAudio() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) {
+        audioCtx = new AC();
       }
-      showScreen(targetId);
-      if (targetId === "tic-tac-toe-screen") initTicTacToe();
-    });
-  });
+    }
+  }
 
-  // Tombol back ke menu
-  document.querySelectorAll("[data-back]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      sfxMenuClick();
-      stopAllGames();
-      showScreen("menu-screen");
-    });
-  });
+  function playBeep(type = "click") {
+    if (!state.soundOn) return;
+    initAudio();
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    let freq = 440;
+    let duration = 0.08;
 
-  // Quick actions
-  const btnContinueLast = document.getElementById("btn-continue-last");
-  if (btnContinueLast) {
-    btnContinueLast.addEventListener("click", () => {
-      const last = platformState.lastGameId;
-      if (last && GAME_SCREENS[last]) {
-        navigateToGameScreen(last);
-      } else {
-        navigateToGameScreen("snake");
+    if (type === "success") {
+      freq = 720; duration = 0.12;
+    } else if (type === "error") {
+      freq = 180; duration = 0.18;
+    } else if (type === "score") {
+      freq = 540; duration = 0.12;
+    }
+
+    osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.2, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+  }
+
+  function updateAvatarInitials(name) {
+    const trimmed = (name || "").trim();
+    let initials = "CH";
+    if (trimmed.length > 0) {
+      const parts = trimmed.split(/\s+/);
+      initials = parts.slice(0, 2).map(p => p[0].toUpperCase()).join("");
+    }
+    playerAvatar.innerHTML = `<span>${initials}</span>`;
+  }
+
+  function loadFromStorage() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("arcadeHubState") || "{}");
+      if (saved.playerName) {
+        playerNameDisplay.textContent = saved.playerName;
+        updateAvatarInitials(saved.playerName);
+      }
+      if (typeof saved.soundOn === "boolean") {
+        state.soundOn = saved.soundOn;
+        settingSoundToggle.setAttribute("data-sound-state", state.soundOn ? "on" : "off");
+      }
+      if (saved.theme === "neon") {
+        state.theme = "neon";
+        body.classList.add("theme-neon");
+        themeChips.forEach(chip => {
+          chip.classList.toggle("active", chip.dataset.theme === "neon");
+        });
+      }
+      if (saved.highScores) {
+        state.highScores = saved.highScores;
+        Object.entries(state.highScores).forEach(([gameId, score]) => {
+          updateHighScoreDisplay(gameId, score);
+        });
+      }
+      if (saved.totalGamesPlayed) {
+        state.totalGamesPlayed = saved.totalGamesPlayed;
+        statTotalPlayed.textContent = state.totalGamesPlayed;
+      }
+      if (saved.totalPlayTimeMs) {
+        state.totalPlayTimeMs = saved.totalPlayTimeMs;
+        updateTotalTimeUI();
+      }
+      if (saved.gamePlayCount) {
+        state.gamePlayCount = saved.gamePlayCount;
+        updateFavoriteGameUI();
+      }
+    } catch (e) {
+      console.warn("Failed to load state", e);
+    }
+  }
+
+  function saveToStorage() {
+    const payload = {
+      playerName: playerNameDisplay.textContent,
+      soundOn: state.soundOn,
+      theme: state.theme,
+      highScores: state.highScores,
+      totalGamesPlayed: state.totalGamesPlayed,
+      totalPlayTimeMs: state.totalPlayTimeMs,
+      gamePlayCount: state.gamePlayCount
+    };
+    try {
+      localStorage.setItem("arcadeHubState", JSON.stringify(payload));
+    } catch (e) {
+      console.warn("Failed to save state", e);
+    }
+  }
+
+  function updateHighScoreDisplay(gameId, score) {
+    state.highScores[gameId] = score;
+    const els = highscoreElsByGame[gameId] || [];
+    els.forEach(el => {
+      el.textContent = score;
+    });
+  }
+
+  function maybeSetHighScore(gameId, score) {
+    const current = state.highScores[gameId] || 0;
+    if (score > current) {
+      updateHighScoreDisplay(gameId, score);
+      saveToStorage();
+      playBeep("success");
+      return true;
+    }
+    return false;
+  }
+
+  function updateTotalTimeUI() {
+    const minutes = Math.round(state.totalPlayTimeMs / 60000);
+    statTotalTime.textContent = `${minutes} m`;
+  }
+
+  function updateFavoriteGameUI() {
+    const entries = Object.entries(state.gamePlayCount);
+    if (!entries.length) {
+      statFavoriteGame.textContent = "-";
+      return;
+    }
+    entries.sort((a, b) => b[1] - a[1]);
+    const [topGameId] = entries[0];
+    statFavoriteGame.textContent = mapGameIdToName(topGameId);
+  }
+
+  function mapGameIdToName(gameId) {
+    const map = {
+      "tic-tac-toe": "Tic Tac Toe",
+      "snake": "Snake",
+      "flappy": "Flappy Bird",
+      "airhockey": "Air Hockey",
+      "tetris": "Tetris",
+      "submarine": "Submarine Battle",
+      "game2048": "2048",
+      "breakout": "Breakout",
+      "space": "Space Shooter",
+      "pong": "Pong",
+      "memory": "Memory Match"
+    };
+    return map[gameId] || gameId;
+  }
+
+  function recordGameStart(gameId) {
+    state.currentGameStartTime = Date.now();
+    state.lastGameId = gameId;
+  }
+
+  function recordGameEnd(gameId) {
+    if (!state.currentGameStartTime) return;
+    const elapsed = Date.now() - state.currentGameStartTime;
+    state.currentGameStartTime = null;
+    state.totalPlayTimeMs += elapsed;
+    state.totalGamesPlayed += 1;
+    statTotalPlayed.textContent = state.totalGamesPlayed;
+    updateTotalTimeUI();
+    state.gamePlayCount[gameId] = (state.gamePlayCount[gameId] || 0) + 1;
+    updateFavoriteGameUI();
+    saveToStorage();
+  }
+
+  function unlockAchievement(id) {
+    achievementStatuses.forEach(el => {
+      const target = el.getAttribute("data-achievement-status");
+      if (target === id) {
+        el.textContent = "Unlocked";
+        el.classList.add("unlocked");
       }
     });
   }
 
-  const btnRandomGame = document.getElementById("btn-random-game");
-  if (btnRandomGame) {
-    btnRandomGame.addEventListener("click", () => {
-      const pick = GAME_IDS[Math.floor(Math.random() * GAME_IDS.length)];
-      navigateToGameScreen(pick);
-    });
-  }
-
-  // MODALS
-  function openModal(id) {
-    const modal = document.getElementById(id);
+  /* ==============
+   *  MODALS
+   * ============== */
+  function openModal(modal) {
     if (!modal) return;
     modal.setAttribute("aria-hidden", "false");
   }
 
-  function closeAllModals() {
-    document.querySelectorAll(".modal").forEach((m) =>
-      m.setAttribute("aria-hidden", "true")
-    );
+  function closeModal(modal) {
+    if (!modal) return;
+    modal.setAttribute("aria-hidden", "true");
   }
 
-  const btnSettings = document.getElementById("btn-settings");
-  if (btnSettings) {
-    btnSettings.addEventListener("click", () => {
-      sfxMenuClick();
-      openModal("modal-settings");
-    });
-  }
-
-  const btnHowTo = document.getElementById("btn-how-to");
-  if (btnHowTo) {
-    btnHowTo.addEventListener("click", () => {
-      sfxMenuClick();
-      openModal("modal-howto");
-    });
-  }
-
-  // Edit nama player
-  const editNameBtn = document.getElementById("edit-name-button");
-  const nameInput = document.getElementById("player-name-input");
-  const nameSaveBtn = document.getElementById("player-name-save");
-
-  if (editNameBtn && nameInput && nameSaveBtn) {
-    editNameBtn.addEventListener("click", () => {
-      sfxMenuClick();
-      openModal("modal-name");
-      nameInput.value = platformState.playerName || "";
-      nameInput.focus();
-    });
-
-    nameSaveBtn.addEventListener("click", () => {
-      let val = nameInput.value.trim();
-      if (!val) val = "Player";
-      platformState.playerName = val;
-      setPlayerNameUI(val);
-      saveState();
-      closeAllModals();
-    });
-  }
-
-  // Close modal via tombol
-  document.querySelectorAll("[data-modal-close]").forEach((el) => {
-    el.addEventListener("click", () => {
-      closeAllModals();
+  document.querySelectorAll("[data-modal-close]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const modal = btn.closest(".modal");
+      closeModal(modal);
     });
   });
 
-  // Close modal via backdrop
-  document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
-    backdrop.addEventListener("click", () => {
-      closeAllModals();
-    });
+  btnHowTo.addEventListener("click", () => {
+    openModal(modalHowTo);
+    playBeep("click");
   });
 
-  // Settings: sound toggle
-  const soundToggle = document.getElementById("setting-sound-toggle");
-  if (soundToggle) {
-    soundToggle.setAttribute(
-      "data-sound-state",
-      platformState.soundEnabled ? "on" : "off"
-    );
-    soundEnabled = platformState.soundEnabled;
+  btnSettings.addEventListener("click", () => {
+    openModal(modalSettings);
+    playBeep("click");
+  });
 
-    soundToggle.addEventListener("click", () => {
-      const current = soundToggle.getAttribute("data-sound-state");
-      const next = current === "on" ? "off" : "on";
-      soundToggle.setAttribute("data-sound-state", next);
-      platformState.soundEnabled = next === "on";
-      soundEnabled = platformState.soundEnabled;
-      saveState();
-      if (soundEnabled) sfxMenuClick();
-    });
-  }
+  /* ==============
+   *  SETTINGS
+   * ============== */
+  settingSoundToggle.addEventListener("click", () => {
+    const current = settingSoundToggle.getAttribute("data-sound-state");
+    const next = current === "on" ? "off" : "on";
+    settingSoundToggle.setAttribute("data-sound-state", next);
+    state.soundOn = next === "on";
+    saveToStorage();
+    if (state.soundOn) playBeep("click");
+  });
 
-  // Settings: theme chips
-  document.querySelectorAll(".theme-chip").forEach((chip) => {
+  themeChips.forEach(chip => {
     chip.addEventListener("click", () => {
-      const theme = chip.getAttribute("data-theme") || "dark";
-      platformState.theme = theme;
-      applyTheme(theme);
-      saveState();
-      sfxMenuClick();
+      const theme = chip.dataset.theme;
+      themeChips.forEach(c => c.classList.toggle("active", c === chip));
+      if (theme === "neon") {
+        body.classList.add("theme-neon");
+        state.theme = "neon";
+      } else {
+        body.classList.remove("theme-neon");
+        state.theme = "dark";
+      }
+      saveToStorage();
+      playBeep("click");
     });
   });
 
-  // INIT semua game
-  initTicTacToe();
-  initSnake();
-  initFlappy();
-  initAirHockey();
-  initTetris();
-  initSubmarine();
-
-  showScreen("menu-screen");
-
-  // Opsional: ketika berpindah tab / close, simpan waktu main
-  window.addEventListener("beforeunload", () => {
-    endActiveGameSession();
+  /* ==============
+   *  PLAYER NAME
+   * ============== */
+  editNameButton.addEventListener("click", () => {
+    playerNameInput.value = playerNameDisplay.textContent || "CHIEF";
+    openModal(modalName);
   });
-});
 
-// =======================================
-// TIC TAC TOE
-// =======================================
-
-function initTicTacToe() {
-  const boardEl = document.getElementById("ttt-board");
-  const statusEl = document.getElementById("ttt-status");
-  const restartBtn = document.getElementById("ttt-restart");
-  if (!boardEl || !statusEl || !restartBtn) return;
-
-  if (!boardEl.hasChildNodes()) {
-    tttBoard = Array(9).fill("");
-    for (let i = 0; i < 9; i++) {
-      const cell = document.createElement("button");
-      cell.className = "ttt-cell";
-      cell.dataset.index = i;
-      cell.addEventListener("click", handleTicTacToeClick);
-      boardEl.appendChild(cell);
-    }
-  }
-
-  restartBtn.onclick = resetTicTacToe;
-  resetTicTacToe();
-}
-
-function resetTicTacToe() {
-  tttBoard = Array(9).fill("");
-  tttCurrentPlayer = "X";
-  tttGameOver = false;
-  document.querySelectorAll(".ttt-cell").forEach((cell) => {
-    cell.textContent = "";
+  playerNameSave.addEventListener("click", () => {
+    const newName = playerNameInput.value.trim() || "CHIEF";
+    playerNameDisplay.textContent = newName;
+    updateAvatarInitials(newName);
+    saveToStorage();
+    closeModal(modalName);
+    playBeep("success");
   });
-  const statusEl = document.getElementById("ttt-status");
-  if (statusEl) statusEl.textContent = "Giliran: X";
-}
 
-function handleTicTacToeClick(e) {
-  const index = parseInt(e.currentTarget.dataset.index, 10);
-  if (tttGameOver || tttBoard[index] !== "") return;
+  /* ====================
+   *  SCREEN NAVIGATION
+   * ==================== */
+  const games = {}; // will be filled below (each game module)
 
-  tttBoard[index] = tttCurrentPlayer;
-  e.currentTarget.textContent = tttCurrentPlayer;
-  sfxTicMove();
-
-  if (checkTicTacToeWin(tttCurrentPlayer)) {
-    const statusEl = document.getElementById("ttt-status");
-    if (statusEl) statusEl.textContent = `Pemenang: ${tttCurrentPlayer}!`;
-    tttGameOver = true;
-    sfxTicWin();
-    return;
-  }
-
-  if (tttBoard.every((c) => c !== "")) {
-    const statusEl = document.getElementById("ttt-status");
-    if (statusEl) statusEl.textContent = "Seri!";
-    tttGameOver = true;
-    return;
-  }
-
-  tttCurrentPlayer = tttCurrentPlayer === "X" ? "O" : "X";
-  const statusEl = document.getElementById("ttt-status");
-  if (statusEl) statusEl.textContent = `Giliran: ${tttCurrentPlayer}`;
-}
-
-function checkTicTacToeWin(player) {
-  const b = tttBoard;
-  const lines = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6],
-  ];
-  return lines.some((line) => line.every((i) => b[i] === player));
-}
-
-// =======================================
-// SNAKE
-// =======================================
-
-function initSnake() {
-  snakeCanvas = document.getElementById("snake-canvas");
-  if (!snakeCanvas) return;
-  snakeCtx = snakeCanvas.getContext("2d");
-
-  const startBtn = document.getElementById("snake-start");
-  if (startBtn) {
-    startBtn.addEventListener("click", () => {
-      handleGameStart("snake");
-      startSnakeGame();
+  function stopAllGames() {
+    Object.values(games).forEach(game => {
+      if (game && typeof game.stop === "function") {
+        game.stop();
+      }
     });
+    state.currentGameStartTime = null;
   }
 
-  document.addEventListener("keydown", handleSnakeKey);
-  resetSnake();
-  drawSnake();
-}
+  function showScreen(screenId) {
+    if (screenId === state.currentScreenId) return;
 
-function resetSnake() {
-  if (!snakeCanvas) return;
-  const cols = Math.floor(snakeCanvas.width / SNAKE_TILE);
-  const rows = Math.floor(snakeCanvas.height / SNAKE_TILE);
-  const startX = Math.floor(cols / 2);
-  const startY = Math.floor(rows / 2);
-
-  snake = [{ x: startX, y: startY }];
-  snakeDir = { x: 1, y: 0 };
-  snakeScore = 0;
-  updateSnakeScore();
-  spawnSnakeFood();
-}
-
-function startSnakeGame() {
-  resetSnake();
-  if (snakeInterval) clearInterval(snakeInterval);
-  snakeInterval = setInterval(updateSnake, SNAKE_SPEED_MS);
-}
-
-function handleSnakeKey(e) {
-  if (!snake) return;
-  const key = e.key.toLowerCase();
-  if ((key === "arrowup" || key === "w") && snakeDir.y !== 1) {
-    snakeDir = { x: 0, y: -1 };
-  } else if ((key === "arrowdown" || key === "s") && snakeDir.y !== -1) {
-    snakeDir = { x: 0, y: 1 };
-  } else if ((key === "arrowleft" || key === "a") && snakeDir.x !== 1) {
-    snakeDir = { x: -1, y: 0 };
-  } else if ((key === "arrowright" || key === "d") && snakeDir.x !== -1) {
-    snakeDir = { x: 1, y: 0 };
-  }
-}
-
-function spawnSnakeFood() {
-  const cols = Math.floor(snakeCanvas.width / SNAKE_TILE);
-  const rows = Math.floor(snakeCanvas.height / SNAKE_TILE);
-  let x, y;
-  do {
-    x = Math.floor(Math.random() * cols);
-    y = Math.floor(Math.random() * rows);
-  } while (snake.some((seg) => seg.x === x && seg.y === y));
-  snakeFood = { x, y };
-}
-
-function updateSnake() {
-  const cols = Math.floor(snakeCanvas.width / SNAKE_TILE);
-  const rows = Math.floor(snakeCanvas.height / SNAKE_TILE);
-
-  const head = { x: snake[0].x + snakeDir.x, y: snake[0].y + snakeDir.y };
-
-  if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows) {
-    endSnakeGame();
-    return;
-  }
-
-  if (snake.some((seg) => seg.x === head.x && seg.y === head.y)) {
-    endSnakeGame();
-    return;
-  }
-
-  snake.unshift(head);
-
-  if (head.x === snakeFood.x && head.y === snakeFood.y) {
-    snakeScore += 10;
-    updateSnakeScore();
-    spawnSnakeFood();
-    sfxSnakeEat();
-  } else {
-    snake.pop();
-  }
-
-  drawSnake();
-}
-
-function drawSnake() {
-  if (!snakeCtx) return;
-  snakeCtx.clearRect(0, 0, snakeCanvas.width, snakeCanvas.height);
-
-  snakeCtx.fillStyle = "#38bdf8";
-  snake.forEach((seg, i) => {
-    snakeCtx.globalAlpha = 0.7 + (snake.length - i) / (snake.length * 4);
-    snakeCtx.fillRect(
-      seg.x * SNAKE_TILE,
-      seg.y * SNAKE_TILE,
-      SNAKE_TILE - 2,
-      SNAKE_TILE - 2
-    );
-  });
-  snakeCtx.globalAlpha = 1;
-
-  if (snakeFood) {
-    snakeCtx.fillStyle = "#f97373";
-    snakeCtx.beginPath();
-    snakeCtx.arc(
-      snakeFood.x * SNAKE_TILE + SNAKE_TILE / 2,
-      snakeFood.y * SNAKE_TILE + SNAKE_TILE / 2,
-      SNAKE_TILE / 2.5,
-      0,
-      Math.PI * 2
-    );
-    snakeCtx.fill();
-  }
-}
-
-function endSnakeGame() {
-  if (snakeInterval) clearInterval(snakeInterval);
-  snakeInterval = null;
-  sfxSnakeDie();
-  handleGameEnd("snake", snakeScore);
-  alert("Game over! Skor kamu: " + snakeScore);
-}
-
-function updateSnakeScore() {
-  const scoreEl = document.getElementById("snake-score");
-  if (scoreEl) scoreEl.textContent = snakeScore;
-}
-
-// =======================================
-// FLAPPY BIRD
-// =======================================
-
-function initFlappy() {
-  flappyCanvas = document.getElementById("flappy-canvas");
-  if (!flappyCanvas) return;
-  flappyCtx = flappyCanvas.getContext("2d");
-
-  const startBtn = document.getElementById("flappy-start");
-  if (startBtn) {
-    startBtn.addEventListener("click", () => {
-      handleGameStart("flappy");
-      startFlappy();
-    });
-  }
-
-  flappyCanvas.addEventListener("mousedown", () => {
-    if (!flappyRunning) return;
-    flap();
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.code === "Space") {
-      e.preventDefault();
-      if (flappyRunning) {
-        flap();
+    // If leaving a game screen, record end time
+    const prevScreenId = state.currentScreenId;
+    if (prevScreenId && prevScreenId !== "menu-screen") {
+      const prevGameId = Object.entries(gameIdToScreenId).find(
+        ([gid, sid]) => sid === prevScreenId
+      )?.[0];
+      if (prevGameId) {
+        recordGameEnd(prevGameId);
       }
     }
-  });
 
-  resetFlappy();
-  renderFlappy();
-}
+    // Stop all loops
+    stopAllGames();
 
-function resetFlappy() {
-  if (!flappyCanvas) return;
-  flappyBird = {
-    x: 80,
-    y: flappyCanvas.height / 2,
-    vy: 0,
-    r: 14,
-  };
-  flappyPipes = [];
-  flappyScore = 0;
-  flappyPipeTimer = 0;
-  updateFlappyScore();
-}
-
-function startFlappy() {
-  resetFlappy();
-  flappyRunning = true;
-
-  if (flappyLoopId) cancelAnimationFrame(flappyLoopId);
-
-  let lastTime = performance.now();
-  const loop = (time) => {
-    if (!flappyRunning) return;
-    const delta = time - lastTime;
-    lastTime = time;
-    updateFlappy(delta);
-    renderFlappy();
-    flappyLoopId = requestAnimationFrame(loop);
-  };
-
-  flappyLoopId = requestAnimationFrame(loop);
-}
-
-function flap() {
-  if (!flappyBird) return;
-  flappyBird.vy = FLAP_FORCE;
-  sfxFlap();
-}
-
-function updateFlappy(delta) {
-  flappyBird.vy += GRAVITY;
-  flappyBird.y += flappyBird.vy;
-
-  flappyPipeTimer += delta;
-  if (flappyPipeTimer >= PIPE_INTERVAL) {
-    const gapY =
-      60 + Math.random() * (flappyCanvas.height - PIPE_GAP - 120);
-    flappyPipes.push({
-      x: flappyCanvas.width,
-      gapY,
-      passed: false,
+    screens.forEach(s => {
+      s.classList.toggle("active", s.id === screenId);
     });
-    flappyPipeTimer = 0;
+    state.currentScreenId = screenId;
+
+    if (screenId === "menu-screen") return;
+
+    // Start the corresponding game
+    const gameId = Object.entries(gameIdToScreenId).find(
+      ([gid, sid]) => sid === screenId
+    )?.[0];
+
+    if (gameId && games[gameId] && typeof games[gameId].start === "function") {
+      games[gameId].start();
+      recordGameStart(gameId);
+      unlockAchievement("first-game");
+    }
   }
 
-  const speed = 2.5;
-  flappyPipes.forEach((pipe) => {
-    pipe.x -= speed;
+  gameCards.forEach(card => {
+    card.addEventListener("click", e => {
+      // Only trigger when clicking card or its Play button
+      const targetScreen = card.getAttribute("data-target");
+      const gameId = card.getAttribute("data-game-id");
+      if (!targetScreen) return;
+      playBeep("click");
+      showScreen(targetScreen);
+      state.lastGameId = gameId;
+      saveToStorage();
+    });
+
+    const playBtn = card.querySelector(".play-button");
+    if (playBtn) {
+      playBtn.addEventListener("click", e => {
+        e.stopPropagation();
+        const targetScreen = card.getAttribute("data-target");
+        const gameId = card.getAttribute("data-game-id");
+        if (!targetScreen) return;
+        playBeep("click");
+        showScreen(targetScreen);
+        state.lastGameId = gameId;
+        saveToStorage();
+      });
+    }
   });
 
-  flappyPipes = flappyPipes.filter((pipe) => pipe.x + PIPE_WIDTH > 0);
+  backButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      playBeep("click");
+      showScreen("menu-screen");
+    });
+  });
 
-  for (const pipe of flappyPipes) {
-    if (!pipe.passed && flappyBird.x > pipe.x + PIPE_WIDTH) {
-      pipe.passed = true;
-      flappyScore += 1;
-      updateFlappyScore();
-      sfxFlappyScore();
+  btnContinueLast.addEventListener("click", () => {
+    if (!state.lastGameId) {
+      playBeep("error");
+      return;
+    }
+    const screenId = gameIdToScreenId[state.lastGameId];
+    if (!screenId) return;
+    playBeep("click");
+    showScreen(screenId);
+  });
+
+  btnRandomGame.addEventListener("click", () => {
+    const idx = Math.floor(Math.random() * allGameIds.length);
+    const randomGameId = allGameIds[idx];
+    const screenId = gameIdToScreenId[randomGameId];
+    if (!screenId) return;
+    playBeep("click");
+    showScreen(screenId);
+    state.lastGameId = randomGameId;
+    saveToStorage();
+  });
+
+  /* =========================
+   *  GAME: TIC TAC TOE
+   * ========================= */
+  (function initTicTacToe() {
+    const boardEl = document.getElementById("ttt-board");
+    const statusEl = document.getElementById("ttt-status");
+    const restartBtn = document.getElementById("ttt-restart");
+
+    let board = Array(9).fill(null);
+    let currentPlayer = "X";
+    let gameOver = false;
+
+    function renderBoard() {
+      boardEl.innerHTML = "";
+      board.forEach((val, idx) => {
+        const cell = document.createElement("div");
+        cell.className = "ttt-cell";
+        cell.textContent = val || "";
+        cell.addEventListener("click", () => onCellClick(idx));
+        boardEl.appendChild(cell);
+      });
     }
 
-    if (
-      flappyBird.x + flappyBird.r > pipe.x &&
-      flappyBird.x - flappyBird.r < pipe.x + PIPE_WIDTH
-    ) {
+    function checkWinner(b) {
+      const lines = [
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8],
+        [0, 3, 6],
+        [1, 4, 7],
+        [2, 5, 8],
+        [0, 4, 8],
+        [2, 4, 6]
+      ];
+      for (const [a, c, d] of lines) {
+        if (b[a] && b[a] === b[c] && b[a] === b[d]) return b[a];
+      }
+      if (b.every(x => x)) return "draw";
+      return null;
+    }
+
+    function onCellClick(idx) {
+      if (gameOver || board[idx]) return;
+      board[idx] = currentPlayer;
+      playBeep("click");
+      const result = checkWinner(board);
+      if (result === "X" || result === "O") {
+        statusEl.textContent = `Pemenang: ${result}`;
+        gameOver = true;
+        playBeep("success");
+      } else if (result === "draw") {
+        statusEl.textContent = "Seri!";
+        gameOver = true;
+      } else {
+        currentPlayer = currentPlayer === "X" ? "O" : "X";
+        statusEl.textContent = `Giliran: ${currentPlayer}`;
+      }
+      renderBoard();
+    }
+
+    function reset() {
+      board = Array(9).fill(null);
+      currentPlayer = "X";
+      gameOver = false;
+      statusEl.textContent = "Giliran: X";
+      renderBoard();
+    }
+
+    restartBtn.addEventListener("click", () => {
+      reset();
+      playBeep("click");
+    });
+
+    reset();
+
+    games["tic-tac-toe"] = {
+      start() {
+        reset();
+      },
+      stop() {
+        // no loop to clean
+      }
+    };
+  })();
+
+  /* =========================
+   *  GAME: SNAKE
+   * ========================= */
+  (function initSnake() {
+    const canvas = document.getElementById("snake-canvas");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("snake-score");
+    const startBtn = document.getElementById("snake-start");
+
+    const gridSize = 20;
+    const tileCount = canvas.width / gridSize;
+
+    let snake, food, dir, score, intervalId, running;
+    let keyHandler;
+
+    function reset() {
+      snake = [{ x: 10, y: 10 }];
+      dir = { x: 1, y: 0 };
+      placeFood();
+      score = 0;
+      scoreEl.textContent = "0";
+      running = false;
+      draw();
+    }
+
+    function placeFood() {
+      food = {
+        x: Math.floor(Math.random() * tileCount),
+        y: Math.floor(Math.random() * tileCount)
+      };
+    }
+
+    function draw() {
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // food
+      ctx.fillStyle = "#f97316";
+      ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+
+      // snake
+      ctx.fillStyle = "#38bdf8";
+      snake.forEach((segment, idx) => {
+        ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 1, gridSize - 1);
+      });
+    }
+
+    function update() {
+      const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+      // wrap or crash?
       if (
-        flappyBird.y - flappyBird.r < pipe.gapY ||
-        flappyBird.y + flappyBird.r > pipe.gapY + PIPE_GAP
+        head.x < 0 ||
+        head.x >= tileCount ||
+        head.y < 0 ||
+        head.y >= tileCount ||
+        snake.some(seg => seg.x === head.x && seg.y === head.y)
       ) {
-        endFlappy();
+        playBeep("error");
+        maybeSetHighScore("snake", score);
+        if (score >= 100) unlockAchievement("snake-100");
+        stopGame();
         return;
       }
+
+      snake.unshift(head);
+
+      if (head.x === food.x && head.y === food.y) {
+        score += 10;
+        scoreEl.textContent = String(score);
+        playBeep("score");
+        placeFood();
+      } else {
+        snake.pop();
+      }
+
+      draw();
     }
-  }
 
-  if (
-    flappyBird.y + flappyBird.r > flappyCanvas.height ||
-    flappyBird.y - flappyBird.r < 0
-  ) {
-    endFlappy();
-  }
-}
+    function startGame() {
+      if (running) {
+        // restart
+        stopGame();
+      }
+      reset();
+      running = true;
+      if (!keyHandler) {
+        keyHandler = e => {
+          const key = e.key.toLowerCase();
+          if (["arrowup", "w"].includes(key) && dir.y !== 1) {
+            dir = { x: 0, y: -1 };
+          } else if (["arrowdown", "s"].includes(key) && dir.y !== -1) {
+            dir = { x: 0, y: 1 };
+          } else if (["arrowleft", "a"].includes(key) && dir.x !== 1) {
+            dir = { x: -1, y: 0 };
+          } else if (["arrowright", "d"].includes(key) && dir.x !== -1) {
+            dir = { x: 1, y: 0 };
+          }
+        };
+      }
+      document.addEventListener("keydown", keyHandler);
+      intervalId = setInterval(update, 120);
+    }
 
-function renderFlappy() {
-  if (!flappyCtx) return;
-  flappyCtx.clearRect(0, 0, flappyCanvas.width, flappyCanvas.height);
+    function stopGame() {
+      running = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      if (keyHandler) {
+        document.removeEventListener("keydown", keyHandler);
+      }
+      draw();
+    }
 
-  flappyCtx.fillStyle = "#020617";
-  flappyCtx.fillRect(0, 0, flappyCanvas.width, flappyCanvas.height);
-
-  flappyCtx.fillStyle = "#22c55e";
-  flappyPipes.forEach((pipe) => {
-    flappyCtx.fillRect(pipe.x, 0, PIPE_WIDTH, pipe.gapY);
-    flappyCtx.fillRect(
-      pipe.x,
-      pipe.gapY + PIPE_GAP,
-      PIPE_WIDTH,
-      flappyCanvas.height - pipe.gapY - PIPE_GAP
-    );
-  });
-
-  flappyCtx.fillStyle = "#facc15";
-  flappyCtx.beginPath();
-  flappyCtx.arc(flappyBird.x, flappyBird.y, flappyBird.r, 0, Math.PI * 2);
-  flappyCtx.fill();
-}
-
-function endFlappy() {
-  if (!flappyRunning) return;
-  flappyRunning = false;
-  if (flappyLoopId) {
-    cancelAnimationFrame(flappyLoopId);
-    flappyLoopId = null;
-  }
-  sfxFlappyDie();
-  handleGameEnd("flappy", flappyScore);
-  alert("Game over! Skor kamu: " + flappyScore);
-}
-
-function updateFlappyScore() {
-  const el = document.getElementById("flappy-score");
-  if (el) el.textContent = flappyScore;
-}
-
-// =======================================
-// AIR HOCKEY
-// =======================================
-
-function initAirHockey() {
-  airCanvas = document.getElementById("airhockey-canvas");
-  if (!airCanvas) return;
-  airCtx = airCanvas.getContext("2d");
-
-  const startBtn = document.getElementById("airhockey-start");
-  if (startBtn) {
     startBtn.addEventListener("click", () => {
-      handleGameStart("airhockey");
-      startAirHockey();
+      playBeep("click");
+      startGame();
     });
-  }
 
-  airCanvas.addEventListener("mousemove", handleAirMouseMove);
+    reset();
 
-  resetAirHockey();
-  renderAirHockey();
-}
+    games["snake"] = {
+      start() {
+        reset();
+      },
+      stop() {
+        stopGame();
+      }
+    };
+  })();
 
-function resetAirHockey() {
-  const w = airCanvas.width;
-  const h = airCanvas.height;
+  /* =========================
+   *  GAME: FLAPPY BIRD
+   * ========================= */
+  (function initFlappy() {
+    const canvas = document.getElementById("flappy-canvas");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("flappy-score");
+    const startBtn = document.getElementById("flappy-start");
 
-  puck = {
-    x: w / 2,
-    y: h / 2,
-    vx: Math.random() > 0.5 ? 2 : -2,
-    vy: 2,
-    r: 10,
-  };
+    let birdY, birdV, gravity, lift;
+    let pipes, score, running, frameId;
+    let lastPipeX;
+    let clickHandler;
+    let keyHandler;
 
-  playerPaddle = {
-    x: w / 2,
-    y: h - 30,
-    r: 20,
-  };
-
-  aiPaddle = {
-    x: w / 2,
-    y: 30,
-    r: 20,
-  };
-}
-
-function startAirHockey() {
-  resetAirHockey();
-  airPlayerScore = 0;
-  airAiScore = 0;
-  updateAirHockeyScore();
-
-  if (airLoopId) cancelAnimationFrame(airLoopId);
-
-  let lastTime = performance.now();
-  function loop(time) {
-    const delta = time - lastTime;
-    lastTime = time;
-    updateAirHockey(delta);
-    renderAirHockey();
-    airLoopId = requestAnimationFrame(loop);
-  }
-
-  airLoopId = requestAnimationFrame(loop);
-}
-
-function handleAirMouseMove(e) {
-  if (!airCanvas || !playerPaddle) return;
-  const rect = airCanvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  playerPaddle.x = Math.max(
-    playerPaddle.r,
-    Math.min(airCanvas.width - playerPaddle.r, x)
-  );
-}
-
-function updateAirHockey() {
-  const w = airCanvas.width;
-  const h = airCanvas.height;
-
-  puck.x += puck.vx;
-  puck.y += puck.vy;
-
-  if (puck.x - puck.r < 0 || puck.x + puck.r > w) {
-    puck.vx *= -1;
-  }
-
-  const aiSpeed = 2.1;
-  if (puck.x < aiPaddle.x - 5) {
-    aiPaddle.x -= aiSpeed;
-  } else if (puck.x > aiPaddle.x + 5) {
-    aiPaddle.x += aiSpeed;
-  }
-  aiPaddle.x = Math.max(aiPaddle.r, Math.min(w - aiPaddle.r, aiPaddle.x));
-
-  handlePaddleCollision(playerPaddle, true);
-  handlePaddleCollision(aiPaddle, false);
-
-  const goalLeft = w / 3;
-  const goalRight = (2 * w) / 3;
-
-  if (puck.y - puck.r <= 0) {
-    if (puck.x > goalLeft && puck.x < goalRight) {
-      airPlayerScore++;
-      updateAirHockeyScore();
-      sfxHockeyGoal();
-      resetAirHockey();
-      return;
-    } else {
-      puck.vy *= -1;
-      puck.y = puck.r;
+    function reset() {
+      birdY = canvas.height / 2;
+      birdV = 0;
+      gravity = 0.35;
+      lift = -6;
+      pipes = [];
+      score = 0;
+      scoreEl.textContent = "0";
+      lastPipeX = canvas.width + 120;
+      running = false;
+      draw();
     }
-  }
 
-  if (puck.y + puck.r >= h) {
-    if (puck.x > goalLeft && puck.x < goalRight) {
-      airAiScore++;
-      updateAirHockeyScore();
-      sfxHockeyGoal();
-      resetAirHockey();
-      return;
-    } else {
-      puck.vy *= -1;
-      puck.y = h - puck.r;
+    function spawnPipe() {
+      const gap = 120;
+      const minHeight = 40;
+      const maxHeight = canvas.height - gap - minHeight;
+      const topHeight = Math.floor(Math.random() * (maxHeight - minHeight)) + minHeight;
+      pipes.push({
+        x: canvas.width + 10,
+        top: topHeight,
+        bottom: canvas.height - (topHeight + gap),
+        passed: false
+      });
     }
-  }
-}
 
-function handlePaddleCollision(paddle, isPlayer) {
-  const dx = puck.x - paddle.x;
-  const dy = puck.y - paddle.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  const minDist = puck.r + paddle.r;
+    function draw() {
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  if (dist < minDist) {
-    const nx = dx / (dist || 1);
-    const ny = dy / (dist || 1);
+      // bird
+      ctx.fillStyle = "#fbbf24";
+      ctx.beginPath();
+      ctx.arc(80, birdY, 12, 0, Math.PI * 2);
+      ctx.fill();
 
-    puck.x = paddle.x + nx * minDist;
-    puck.y = paddle.y + ny * minDist;
+      // pipes
+      ctx.fillStyle = "#22c55e";
+      pipes.forEach(p => {
+        ctx.fillRect(p.x, 0, 40, p.top);
+        ctx.fillRect(p.x, canvas.height - p.bottom, 40, p.bottom);
+      });
+    }
 
-    const speed = Math.sqrt(puck.vx * puck.vx + puck.vy * puck.vy) || 3;
-    const dirY = isPlayer ? -1 : 1;
-    puck.vx = nx * speed * 1.05;
-    puck.vy = ny * speed * 1.05;
-    puck.vy = Math.abs(puck.vy) * dirY;
+    function update() {
+      if (!running) return;
+      birdV += gravity;
+      birdY += birdV;
 
-    sfxHockeyHit();
-  }
-}
+      if (birdY > canvas.height - 12 || birdY < 12) {
+        gameOver();
+        return;
+      }
 
-function renderAirHockey() {
-  if (!airCtx) return;
-  const w = airCanvas.width;
-  const h = airCanvas.height;
+      pipes.forEach(p => {
+        p.x -= 2;
+      });
 
-  airCtx.clearRect(0, 0, w, h);
-  airCtx.fillStyle = "#020617";
-  airCtx.fillRect(0, 0, w, h);
+      if (!pipes.length || pipes[pipes.length - 1].x < canvas.width - 160) {
+        spawnPipe();
+      }
 
-  airCtx.strokeStyle = "rgba(148, 163, 184, 0.5)";
-  airCtx.setLineDash([8, 8]);
-  airCtx.beginPath();
-  airCtx.moveTo(0, h / 2);
-  airCtx.lineTo(w, h / 2);
-  airCtx.stroke();
-  airCtx.setLineDash([]);
+      // collision & scoring
+      for (const p of pipes) {
+        if (80 + 12 > p.x && 80 - 12 < p.x + 40) {
+          // in pipe x range
+          if (birdY - 12 < p.top || birdY + 12 > canvas.height - p.bottom) {
+            gameOver();
+            return;
+          }
+        }
+        if (!p.passed && p.x + 40 < 80) {
+          p.passed = true;
+          score++;
+          scoreEl.textContent = String(score);
+          playBeep("score");
+        }
+      }
 
-  airCtx.strokeStyle = "rgba(56, 189, 248, 0.5)";
-  airCtx.lineWidth = 2;
-  airCtx.strokeRect(w / 3, 2, w / 3, 10);
-  airCtx.strokeRect(w / 3, h - 12, w / 3, 10);
+      draw();
+      frameId = requestAnimationFrame(update);
+    }
 
-  airCtx.fillStyle = "#e5e7eb";
-  airCtx.beginPath();
-  airCtx.arc(puck.x, puck.y, puck.r, 0, Math.PI * 2);
-  airCtx.fill();
+    function flap() {
+      if (!running) return;
+      birdV = lift;
+      playBeep("click");
+    }
 
-  airCtx.fillStyle = "#38bdf8";
-  airCtx.beginPath();
-  airCtx.arc(playerPaddle.x, playerPaddle.y, playerPaddle.r, 0, Math.PI * 2);
-  airCtx.fill();
+    function gameOver() {
+      running = false;
+      cancelAnimationFrame(frameId);
+      maybeSetHighScore("flappy", score);
+      if (score >= 10) unlockAchievement("flappy-10");
+      playBeep("error");
+    }
 
-  airCtx.fillStyle = "#f97373";
-  airCtx.beginPath();
-  airCtx.arc(aiPaddle.x, aiPaddle.y, aiPaddle.r, 0, Math.PI * 2);
-  airCtx.fill();
-}
+    function startGame() {
+      // reset and start
+      cancelAnimationFrame(frameId);
+      running = true;
+      reset();
+      running = true;
+      frameId = requestAnimationFrame(update);
+    }
 
-function updateAirHockeyScore() {
-  const pEl = document.getElementById("airhockey-player-score");
-  const aiEl = document.getElementById("airhockey-ai-score");
-  if (pEl) pEl.textContent = airPlayerScore;
-  if (aiEl) aiEl.textContent = airAiScore;
-}
+    function bindControls() {
+      if (!clickHandler) {
+        clickHandler = () => flap();
+      }
+      if (!keyHandler) {
+        keyHandler = e => {
+          if (e.code === "Space") {
+            e.preventDefault();
+            flap();
+          }
+        };
+      }
+      canvas.addEventListener("mousedown", clickHandler);
+      document.addEventListener("keydown", keyHandler);
+    }
 
-// =======================================
-// TETRIS
-// =======================================
+    function unbindControls() {
+      if (clickHandler) canvas.removeEventListener("mousedown", clickHandler);
+      if (keyHandler) document.removeEventListener("keydown", keyHandler);
+    }
 
-function initTetris() {
-  tetrisCanvas = document.getElementById("tetris-canvas");
-  if (!tetrisCanvas) return;
-  tetrisCtx = tetrisCanvas.getContext("2d");
-
-  tetrisNextCanvas = document.getElementById("tetris-next");
-  if (tetrisNextCanvas) {
-    tetrisNextCtx = tetrisNextCanvas.getContext("2d");
-  }
-
-  const startBtn = document.getElementById("tetris-start");
-  if (startBtn) {
     startBtn.addEventListener("click", () => {
-      handleGameStart("tetris");
-      startTetris();
+      playBeep("click");
+      startGame();
     });
-  }
 
-  document.addEventListener("keydown", handleTetrisKey);
-  resetTetris();
-  drawTetris();
-  drawNextTetris();
-}
+    reset();
+    bindControls();
 
-function resetTetris() {
-  tetrisGrid = Array.from({ length: tetrisRows }, () =>
-    Array(tetrisCols).fill(0)
-  );
-  tetrisScore = 0;
-  updateTetrisScore();
-  tetrisPiece = null;
-  if (tetrisNextType === null) {
-    tetrisNextType = randomTetrisType();
-  }
-  drawNextTetris();
-}
+    games["flappy"] = {
+      start() {
+        reset();
+      },
+      stop() {
+        running = false;
+        cancelAnimationFrame(frameId);
+        unbindControls();
+        bindControls(); // rebind once so controls available next time
+        draw();
+      }
+    };
+  })();
 
-function randomTetrisType() {
-  return 1 + Math.floor(Math.random() * 7);
-}
+  /* =========================
+   *  GAME: AIR HOCKEY
+   * ========================= */
+  (function initAirHockey() {
+    const canvas = document.getElementById("airhockey-canvas");
+    const ctx = canvas.getContext("2d");
+    const playerScoreEl = document.getElementById("airhockey-player-score");
+    const aiScoreEl = document.getElementById("airhockey-ai-score");
+    const startBtn = document.getElementById("airhockey-start");
 
-function startTetris() {
-  resetTetris();
-  tetrisRunning = true;
-  spawnTetrisPiece();
-  if (tetrisDropTimer) clearInterval(tetrisDropTimer);
-  tetrisDropTimer = setInterval(tetrisStep, tetrisDropInterval);
-}
+    let running = false;
+    let frameId;
+    let mousePos = { x: canvas.width / 2, y: canvas.height - 40 };
 
-function handleTetrisKey(e) {
-  if (!tetrisRunning || !tetrisPiece) return;
-  const key = e.key.toLowerCase();
-  if (key === "arrowleft") {
-    moveTetrisPiece(-1, 0);
-  } else if (key === "arrowright") {
-    moveTetrisPiece(1, 0);
-  } else if (key === "arrowdown") {
-    tetrisStep();
-  } else if (key === "arrowup") {
-    rotateTetrisPiece();
-  }
-}
+    const puck = { x: canvas.width / 2, y: canvas.height / 2, vx: 3, vy: 3, r: 10 };
+    const player = { x: canvas.width / 2, y: canvas.height - 30, r: 20 };
+    const ai = { x: canvas.width / 2, y: 30, r: 20 };
 
-function spawnTetrisPiece() {
-  const type = tetrisNextType ?? randomTetrisType();
-  const shape = TETRIS_SHAPES[type];
-  tetrisPiece = {
-    x: Math.floor(tetrisCols / 2) - Math.ceil(shape[0].length / 2),
-    y: 0,
-    shape: shape.map((row) => [...row]),
-    type,
-  };
-  if (collides(tetrisPiece.shape, tetrisPiece.x, tetrisPiece.y)) {
-    endTetris();
-    return;
-  }
-  tetrisNextType = randomTetrisType();
-  drawNextTetris();
-}
+    let playerScore = 0;
+    let aiScore = 0;
 
-function collides(shape, offsetX, offsetY) {
-  for (let y = 0; y < shape.length; y++) {
-    for (let x = 0; x < shape[y].length; x++) {
-      const val = shape[y][x];
-      if (val !== 0) {
-        const nx = offsetX + x;
-        const ny = offsetY + y;
-        if (
-          nx < 0 ||
-          nx >= tetrisCols ||
-          ny >= tetrisRows ||
-          (ny >= 0 && tetrisGrid[ny][nx] !== 0)
-        ) {
-          return true;
+    canvas.addEventListener("mousemove", e => {
+      const rect = canvas.getBoundingClientRect();
+      mousePos.x = e.clientX - rect.left;
+      mousePos.y = e.clientY - rect.top;
+    });
+
+    function reset() {
+      puck.x = canvas.width / 2;
+      puck.y = canvas.height / 2;
+      puck.vx = (Math.random() > 0.5 ? 1 : -1) * 3;
+      puck.vy = (Math.random() > 0.5 ? 1 : -1) * 3;
+    }
+
+    function draw() {
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // center line
+      ctx.strokeStyle = "#1e293b";
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height / 2);
+      ctx.lineTo(canvas.width, canvas.height / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // goals (narrow area)
+      const goalWidth = 120;
+      ctx.fillStyle = "#0f766e";
+      const goalX = (canvas.width - goalWidth) / 2;
+      ctx.fillRect(goalX, 0, goalWidth, 4);
+      ctx.fillRect(goalX, canvas.height - 4, goalWidth, 4);
+
+      // puck
+      ctx.fillStyle = "#f97316";
+      ctx.beginPath();
+      ctx.arc(puck.x, puck.y, puck.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // paddles
+      ctx.fillStyle = "#38bdf8";
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#facc15";
+      ctx.beginPath();
+      ctx.arc(ai.x, ai.y, ai.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function update() {
+      if (!running) return;
+
+      // move player to mouse (clamped)
+      player.x = Math.min(Math.max(mousePos.x, player.r), canvas.width - player.r);
+      player.y = Math.min(Math.max(mousePos.y, canvas.height / 2 + player.r), canvas.height - player.r);
+
+      // AI simple follow puck on x
+      const aiSpeed = 2.5;
+      if (puck.x < ai.x - 4) ai.x -= aiSpeed;
+      else if (puck.x > ai.x + 4) ai.x += aiSpeed;
+      ai.x = Math.min(Math.max(ai.x, ai.r), canvas.width - ai.r);
+
+      // puck movement
+      puck.x += puck.vx;
+      puck.y += puck.vy;
+
+      // side walls
+      if (puck.x < puck.r || puck.x > canvas.width - puck.r) {
+        puck.vx *= -1;
+        puck.x = Math.min(Math.max(puck.x, puck.r), canvas.width - puck.r);
+      }
+
+      // top & bottom walls (no auto score)
+      if (puck.y < puck.r) {
+        puck.vy *= -1;
+        puck.y = puck.r;
+      } else if (puck.y > canvas.height - puck.r) {
+        puck.vy *= -1;
+        puck.y = canvas.height - puck.r;
+      }
+
+      // collision with paddles
+      function collideCircle(circle) {
+        const dx = puck.x - circle.x;
+        const dy = puck.y - circle.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = puck.r + circle.r;
+        if (dist < minDist) {
+          const angle = Math.atan2(dy, dx);
+          const speed = Math.hypot(puck.vx, puck.vy);
+          puck.vx = Math.cos(angle) * speed;
+          puck.vy = Math.sin(angle) * speed;
+          const overlap = minDist - dist;
+          puck.x += Math.cos(angle) * overlap;
+          puck.y += Math.sin(angle) * overlap;
+          playBeep("click");
+        }
+      }
+
+      collideCircle(player);
+      collideCircle(ai);
+
+      // goals (only count if puck fully crosses line inside goal range)
+      const goalWidth = 120;
+      const goalX = (canvas.width - goalWidth) / 2;
+      const inGoalX = puck.x > goalX && puck.x < goalX + goalWidth;
+
+      // player scores: puck crosses top, in goal range, moving up
+      if (puck.y <= puck.r && puck.vy < 0 && inGoalX) {
+        playerScore++;
+        playerScoreEl.textContent = String(playerScore);
+        playBeep("score");
+        reset();
+      }
+
+      // ai scores: puck crosses bottom, in goal range, moving down
+      if (puck.y >= canvas.height - puck.r && puck.vy > 0 && inGoalX) {
+        aiScore++;
+        aiScoreEl.textContent = String(aiScore);
+        playBeep("error");
+        reset();
+      }
+
+      draw();
+      frameId = requestAnimationFrame(update);
+    }
+
+    function startGame() {
+      running = true;
+      reset();
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(update);
+    }
+
+    function stopGame() {
+      running = false;
+      cancelAnimationFrame(frameId);
+      draw();
+    }
+
+    startBtn.addEventListener("click", () => {
+      playBeep("click");
+      startGame();
+    });
+
+    draw();
+
+    games["airhockey"] = {
+      start() {
+        draw();
+      },
+      stop() {
+        stopGame();
+      }
+    };
+  })();
+
+  /* =========================
+   *  GAME: TETRIS
+   * ========================= */
+  (function initTetris() {
+    const canvas = document.getElementById("tetris-canvas");
+    const ctx = canvas.getContext("2d");
+    const nextCanvas = document.getElementById("tetris-next");
+    const nextCtx = nextCanvas.getContext("2d");
+    const scoreEl = document.getElementById("tetris-score");
+    const startBtn = document.getElementById("tetris-start");
+
+    const cols = 10;
+    const rows = 20;
+    const blockSize = canvas.width / cols;
+
+    let board, current, next, score, dropInterval, dropTimerId;
+    let keyHandler;
+
+    const shapes = [
+      [[1, 1, 1, 1]], // I
+      [
+        [1, 1],
+        [1, 1]
+      ], // O
+      [
+        [0, 1, 0],
+        [1, 1, 1]
+      ], // T
+      [
+        [1, 0, 0],
+        [1, 1, 1]
+      ], // J
+      [
+        [0, 0, 1],
+        [1, 1, 1]
+      ], // L
+      [
+        [1, 1, 0],
+        [0, 1, 1]
+      ], // S
+      [
+        [0, 1, 1],
+        [1, 1, 0]
+      ] // Z
+    ];
+
+    function newBoard() {
+      const b = [];
+      for (let r = 0; r < rows; r++) {
+        b.push(new Array(cols).fill(0));
+      }
+      return b;
+    }
+
+    function randomPiece() {
+      const shape = shapes[Math.floor(Math.random() * shapes.length)];
+      return {
+        x: Math.floor(cols / 2) - Math.ceil(shape[0].length / 2),
+        y: 0,
+        shape
+      };
+    }
+
+    function rotate(matrix) {
+      const rows = matrix.length;
+      const cols = matrix[0].length;
+      const result = [];
+      for (let c = 0; c < cols; c++) {
+        const row = [];
+        for (let r = rows - 1; r >= 0; r--) {
+          row.push(matrix[r][c]);
+        }
+        result.push(row);
+      }
+      return result;
+    }
+
+    function collide(board, piece) {
+      const { shape, x, y } = piece;
+      for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+          if (shape[r][c]) {
+            const nx = x + c;
+            const ny = y + r;
+            if (nx < 0 || nx >= cols || ny >= rows) return true;
+            if (ny >= 0 && board[ny][nx]) return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function merge(board, piece) {
+      const { shape, x, y } = piece;
+      for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+          if (shape[r][c]) {
+            const nx = x + c;
+            const ny = y + r;
+            if (ny >= 0) {
+              board[ny][nx] = 1;
+            }
+          }
         }
       }
     }
-  }
-  return false;
-}
 
-function moveTetrisPiece(dx, dy) {
-  const newX = tetrisPiece.x + dx;
-  const newY = tetrisPiece.y + dy;
-  if (!collides(tetrisPiece.shape, newX, newY)) {
-    tetrisPiece.x = newX;
-    tetrisPiece.y = newY;
-    drawTetris();
-    sfxTetrisMove();
-  }
-}
+    function clearLines() {
+      let linesCleared = 0;
+      for (let r = rows - 1; r >= 0; r--) {
+        if (board[r].every(v => v)) {
+          board.splice(r, 1);
+          board.unshift(new Array(cols).fill(0));
+          linesCleared++;
+          r++;
+        }
+      }
+      if (linesCleared > 0) {
+        score += linesCleared * 100;
+        scoreEl.textContent = String(score);
+        playBeep("score");
+      }
+    }
 
-function rotateTetrisPiece() {
-  const oldShape = tetrisPiece.shape;
-  const rotated = oldShape[0].map((_, i) =>
-    oldShape.map((row) => row[i]).reverse()
-  );
-  if (!collides(rotated, tetrisPiece.x, tetrisPiece.y)) {
-    tetrisPiece.shape = rotated;
-    drawTetris();
-    sfxTetrisRotate();
-  }
-}
+    function drawBoard() {
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-function tetrisStep() {
-  if (!tetrisRunning || !tetrisPiece) return;
-  const newY = tetrisPiece.y + 1;
-  if (!collides(tetrisPiece.shape, tetrisPiece.x, newY)) {
-    tetrisPiece.y = newY;
-  } else {
-    for (let y = 0; y < tetrisPiece.shape.length; y++) {
-      for (let x = 0; x < tetrisPiece.shape[y].length; x++) {
-        const val = tetrisPiece.shape[y][x];
-        if (val !== 0) {
-          const gx = tetrisPiece.x + x;
-          const gy = tetrisPiece.y + y;
-          if (gy >= 0) tetrisGrid[gy][gx] = val;
+      ctx.strokeStyle = "#1f2933";
+      for (let x = 0; x <= cols; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * blockSize, 0);
+        ctx.lineTo(x * blockSize, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= rows; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * blockSize);
+        ctx.lineTo(canvas.width, y * blockSize);
+        ctx.stroke();
+      }
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (board[r][c]) {
+            ctx.fillStyle = "#38bdf8";
+            ctx.fillRect(c * blockSize + 1, r * blockSize + 1, blockSize - 2, blockSize - 2);
+          }
+        }
+      }
+
+      if (current) {
+        ctx.fillStyle = "#a855f7";
+        const { shape, x, y } = current;
+        for (let r = 0; r < shape.length; r++) {
+          for (let c = 0; c < shape[r].length; c++) {
+            if (shape[r][c]) {
+              const nx = x + c;
+              const ny = y + r;
+              if (ny >= 0) {
+                ctx.fillRect(nx * blockSize + 1, ny * blockSize + 1, blockSize - 2, blockSize - 2);
+              }
+            }
+          }
         }
       }
     }
-    clearTetrisLines();
-    spawnTetrisPiece();
-  }
-  drawTetris();
-}
 
-function clearTetrisLines() {
-  let lines = 0;
-  for (let y = tetrisRows - 1; y >= 0; y--) {
-    if (tetrisGrid[y].every((cell) => cell !== 0)) {
-      tetrisGrid.splice(y, 1);
-      tetrisGrid.unshift(Array(tetrisCols).fill(0));
-      lines++;
-      y++;
-    }
-  }
-  if (lines > 0) {
-    tetrisScore += lines * 100;
-    updateTetrisScore();
-    sfxTetrisLine();
-  }
-}
-
-function drawTetris() {
-  if (!tetrisCtx) return;
-  const w = tetrisCanvas.width;
-  const h = tetrisCanvas.height;
-
-  tetrisCtx.clearRect(0, 0, w, h);
-  tetrisCtx.fillStyle = "#020617";
-  tetrisCtx.fillRect(0, 0, w, h);
-
-  tetrisCtx.strokeStyle = "rgba(148,163,184,0.2)";
-  tetrisCtx.lineWidth = 0.5;
-  for (let x = 0; x <= tetrisCols; x++) {
-    const px = x * tetrisTile;
-    tetrisCtx.beginPath();
-    tetrisCtx.moveTo(px, 0);
-    tetrisCtx.lineTo(px, tetrisRows * tetrisTile);
-    tetrisCtx.stroke();
-  }
-  for (let y = 0; y <= tetrisRows; y++) {
-    const py = y * tetrisTile;
-    tetrisCtx.beginPath();
-    tetrisCtx.moveTo(0, py);
-    tetrisCtx.lineTo(tetrisCols * tetrisTile, py);
-    tetrisCtx.stroke();
-  }
-
-  for (let y = 0; y < tetrisRows; y++) {
-    for (let x = 0; x < tetrisCols; x++) {
-      const val = tetrisGrid[y][x];
-      if (val !== 0) {
-        tetrisCtx.fillStyle = TETRIS_COLORS[val];
-        tetrisCtx.fillRect(
-          x * tetrisTile + 1,
-          y * tetrisTile + 1,
-          tetrisTile - 2,
-          tetrisTile - 2
-        );
-      }
-    }
-  }
-
-  if (tetrisPiece) {
-    for (let y = 0; y < tetrisPiece.shape.length; y++) {
-      for (let x = 0; x < tetrisPiece.shape[y].length; x++) {
-        const val = tetrisPiece.shape[y][x];
-        if (val !== 0) {
-          const gx = tetrisPiece.x + x;
-          const gy = tetrisPiece.y + y;
-          if (gy >= 0) {
-            tetrisCtx.fillStyle = TETRIS_COLORS[val];
-            tetrisCtx.fillRect(
-              gx * tetrisTile + 1,
-              gy * tetrisTile + 1,
-              tetrisTile - 2,
-              tetrisTile - 2
+    function drawNext() {
+      nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+      if (!next) return;
+      const size = 16;
+      const offsetX = (nextCanvas.width - next.shape[0].length * size) / 2;
+      const offsetY = (nextCanvas.height - next.shape.length * size) / 2;
+      nextCtx.fillStyle = "#020617";
+      nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+      nextCtx.fillStyle = "#38bdf8";
+      for (let r = 0; r < next.shape.length; r++) {
+        for (let c = 0; c < next.shape[r].length; c++) {
+          if (next.shape[r][c]) {
+            nextCtx.fillRect(
+              offsetX + c * size + 1,
+              offsetY + r * size + 1,
+              size - 2,
+              size - 2
             );
           }
         }
       }
     }
-  }
-}
 
-function drawNextTetris() {
-  if (!tetrisNextCtx) return;
-  const w = tetrisNextCanvas.width;
-  const h = tetrisNextCanvas.height;
-
-  tetrisNextCtx.clearRect(0, 0, w, h);
-  tetrisNextCtx.fillStyle = "#020617";
-  tetrisNextCtx.fillRect(0, 0, w, h);
-
-  if (!tetrisNextType) return;
-  const shape = TETRIS_SHAPES[tetrisNextType];
-  const color = TETRIS_COLORS[tetrisNextType];
-
-  const rows = shape.length;
-  const cols = shape[0].length;
-  const tile = 16;
-  const shapeW = cols * tile;
-  const shapeH = rows * tile;
-  const offsetX = (w - shapeW) / 2;
-  const offsetY = (h - shapeH) / 2;
-
-  tetrisNextCtx.fillStyle = color;
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      if (shape[y][x] !== 0) {
-        tetrisNextCtx.fillRect(
-          offsetX + x * tile + 1,
-          offsetY + y * tile + 1,
-          tile - 2,
-          tile - 2
-        );
+    function spawnPiece() {
+      current = next || randomPiece();
+      next = randomPiece();
+      drawNext();
+      if (collide(board, current)) {
+        // game over
+        maybeSetHighScore("tetris", score);
+        stopGame();
       }
     }
-  }
-}
 
-function endTetris() {
-  tetrisRunning = false;
-  if (tetrisDropTimer) clearInterval(tetrisDropTimer);
-  tetrisDropTimer = null;
-  sfxTetrisGameOver();
-  handleGameEnd("tetris", tetrisScore);
-  alert("Game over! Skor Tetris kamu: " + tetrisScore);
-}
+    function tick() {
+      if (!current) return;
+      current.y++;
+      if (collide(board, current)) {
+        current.y--;
+        merge(board, current);
+        clearLines();
+        spawnPiece();
+      }
+      drawBoard();
+    }
 
-function updateTetrisScore() {
-  const el = document.getElementById("tetris-score");
-  if (el) el.textContent = tetrisScore;
-}
+    function startGame() {
+      stopGame();
+      board = newBoard();
+      score = 0;
+      scoreEl.textContent = "0";
+      current = null;
+      next = randomPiece();
+      drawNext();
+      spawnPiece();
+      drawBoard();
+      dropInterval = 500;
+      dropTimerId = setInterval(tick, dropInterval);
 
-// =======================================
-// SUBMARINE BATTLE
-// =======================================
+      if (!keyHandler) {
+        keyHandler = e => {
+          if (!current) return;
+          if (["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp"].includes(e.key)) {
+            e.preventDefault();
+          }
+          if (e.key === "ArrowLeft") {
+            current.x--;
+            if (collide(board, current)) current.x++;
+          } else if (e.key === "ArrowRight") {
+            current.x++;
+            if (collide(board, current)) current.x--;
+          } else if (e.key === "ArrowDown") {
+            current.y++;
+            if (collide(board, current)) current.y--;
+          } else if (e.key === "ArrowUp") {
+            const rotated = rotate(current.shape);
+            const oldShape = current.shape;
+            current.shape = rotated;
+            if (collide(board, current)) {
+              current.shape = oldShape;
+            }
+          }
+          drawBoard();
+        };
+      }
+      document.addEventListener("keydown", keyHandler);
+    }
 
-function initSubmarine() {
-  subCanvas = document.getElementById("submarine-canvas");
-  if (!subCanvas) return;
-  subCtx = subCanvas.getContext("2d");
+    function stopGame() {
+      if (dropTimerId) {
+        clearInterval(dropTimerId);
+        dropTimerId = null;
+      }
+      if (keyHandler) {
+        document.removeEventListener("keydown", keyHandler);
+      }
+      drawBoard();
+    }
 
-  const startBtn = document.getElementById("submarine-start");
-  if (startBtn) {
     startBtn.addEventListener("click", () => {
-      handleGameStart("submarine");
-      startSubmarine();
+      playBeep("click");
+      startGame();
     });
-  }
 
-  document.addEventListener("keydown", (e) => {
-    subKeys[e.code] = true;
-  });
-  document.addEventListener("keyup", (e) => {
-    subKeys[e.code] = false;
-  });
+    board = newBoard();
+    drawBoard();
+    drawNext();
 
-  resetSubmarine();
-  renderSubmarine();
-}
+    games["tetris"] = {
+      start() {
+        drawBoard();
+      },
+      stop() {
+        stopGame();
+      }
+    };
+  })();
 
-function resetSubmarine() {
-  const w = subCanvas.width;
-  const h = subCanvas.height;
+  /* =========================
+   *  GAME: SUBMARINE BATTLE
+   * ========================= */
+  (function initSubmarine() {
+    const canvas = document.getElementById("submarine-canvas");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("submarine-score");
+    const startBtn = document.getElementById("submarine-start");
 
-  submarine = {
-    x: w / 2,
-    y: h - 60,
-    r: 18,
-    baseSpeed: 2.4,
-    speedMultiplier: 1,
-    fireMode: "single",
-    speedUntil: 0,
-    doubleUntil: 0,
-    spreadUntil: 0,
-    hp: 3,
-    invUntil: 0,
-  };
+    let running = false;
+    let frameId;
+    let keys = {};
 
-  torpedoes = [];
-  enemies = [];
-  powerUps = [];
-  subScore = 0;
-  updateSubmarineScore();
-  lastShotTime = 0;
-  lastEnemySpawn = 0;
-  lastPowerSpawn = 0;
-}
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height - 40,
+      w: 32,
+      h: 16,
+      speed: 3,
+      baseSpeed: 3,
+      hp: 100,
+      maxHp: 100
+    };
 
-function startSubmarine() {
-  resetSubmarine();
-  subRunning = true;
+    let bullets = [];
+    let enemies = [];
+    let enemyTimer = 0;
+    let score = 0;
 
-  if (subLoopId) cancelAnimationFrame(subLoopId);
+    const powerUp = {
+      type: null,
+      timer: 0
+    };
 
-  let lastTime = performance.now();
-  const loop = (time) => {
-    if (!subRunning) return;
-    const delta = time - lastTime;
-    lastTime = time;
-    updateSubmarine(delta, time);
-    renderSubmarine();
-    subLoopId = requestAnimationFrame(loop);
-  };
+    let hpBarWidth = 120;
 
-  subLoopId = requestAnimationFrame(loop);
-}
-
-function updateSubmarine(delta, timeNow) {
-  const w = subCanvas.width;
-  const h = subCanvas.height;
-
-  submarine.speedMultiplier = timeNow < submarine.speedUntil ? 1.8 : 1;
-  if (timeNow < submarine.spreadUntil) {
-    submarine.fireMode = "spread";
-  } else if (timeNow < submarine.doubleUntil) {
-    submarine.fireMode = "double";
-  } else {
-    submarine.fireMode = "single";
-  }
-
-  let vx = 0;
-  let vy = 0;
-  if (subKeys["ArrowLeft"] || subKeys["KeyA"]) vx -= 1;
-  if (subKeys["ArrowRight"] || subKeys["KeyD"]) vx += 1;
-  if (subKeys["ArrowUp"] || subKeys["KeyW"]) vy -= 1;
-  if (subKeys["ArrowDown"] || subKeys["KeyS"]) vy += 1;
-
-  if (vx !== 0 || vy !== 0) {
-    const len = Math.sqrt(vx * vx + vy * vy) || 1;
-    vx /= len;
-    vy /= len;
-  }
-
-  const speed = submarine.baseSpeed * submarine.speedMultiplier;
-  submarine.x += vx * speed;
-  submarine.y += vy * speed;
-
-  const margin = 20;
-  submarine.x = Math.max(margin, Math.min(w - margin, submarine.x));
-  submarine.y = Math.max(margin, Math.min(h - margin, submarine.y));
-
-  if (subKeys["Space"]) {
-    shootTorpedo(timeNow);
-  }
-
-  torpedoes.forEach((t) => {
-    t.x += t.vx;
-    t.y += t.vy;
-  });
-  torpedoes = torpedoes.filter((t) => t.y > -30 && t.x > -30 && t.x < w + 30);
-
-  spawnEnemy(timeNow);
-  spawnPowerUp(timeNow);
-
-  enemies.forEach((e) => {
-    if (e.type === "elite") {
-      e.y += e.vy;
-      e.phase += (delta / 16) * 0.04;
-      e.x = e.baseX + Math.sin(e.phase) * 40;
-    } else {
-      e.x += e.vx;
-      e.y += e.vy;
+    function reset() {
+      player.x = canvas.width / 2;
+      player.y = canvas.height - 40;
+      player.speed = player.baseSpeed;
+      player.hp = player.maxHp;
+      bullets = [];
+      enemies = [];
+      enemyTimer = 0;
+      score = 0;
+      scoreEl.textContent = "0";
+      powerUp.type = null;
+      powerUp.timer = 0;
+      draw();
     }
-  });
-  enemies = enemies.filter((e) => e.y < h + 40);
 
-  powerUps.forEach((p) => {
-    p.y += p.vy;
-  });
-  powerUps = powerUps.filter((p) => p.y < h + 30);
+    function spawnEnemy() {
+      const w = 30;
+      const h = 18;
+      enemies.push({
+        x: Math.random() * (canvas.width - w) + w / 2,
+        y: -h,
+        w,
+        h,
+        vy: 1.2 + Math.random() * 1.2,
+        hp: 2
+      });
+    }
 
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    for (let j = torpedoes.length - 1; j >= 0; j--) {
-      const dx = enemies[i].x - torpedoes[j].x;
-      const dy = enemies[i].y - torpedoes[j].y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < enemies[i].r) {
-        torpedoes.splice(j, 1);
-        enemies[i].hp -= 1;
-        if (enemies[i].hp <= 0) {
-          subScore += enemies[i].score;
-          updateSubmarineScore();
-          enemies.splice(i, 1);
-          sfxSubHit();
+    function spawnPowerUp(x, y) {
+      const types = ["speed", "double", "spread"];
+      const type = types[Math.floor(Math.random() * types.length)];
+      enemies.push({
+        x,
+        y,
+        w: 16,
+        h: 16,
+        vy: 1.2,
+        hp: 1,
+        isPowerUp: true,
+        powerType: type
+      });
+    }
+
+    function fireBullets() {
+      playBeep("click");
+      const baseBullet = { x: player.x, y: player.y - 10, vy: -6 };
+
+      if (!powerUp.type) {
+        bullets.push({ ...baseBullet });
+      } else if (powerUp.type === "double") {
+        bullets.push({ x: player.x - 6, y: player.y - 10, vy: -6 });
+        bullets.push({ x: player.x + 6, y: player.y - 10, vy: -6 });
+      } else if (powerUp.type === "spread") {
+        bullets.push({ x: player.x, y: player.y - 10, vy: -6, vx: 0 });
+        bullets.push({ x: player.x - 4, y: player.y - 10, vy: -5.5, vx: -1 });
+        bullets.push({ x: player.x + 4, y: player.y - 10, vy: -5.5, vx: 1 });
+      } else if (powerUp.type === "speed") {
+        bullets.push({ ...baseBullet, vy: -7 });
+      }
+    }
+
+    function draw() {
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // HUD HP
+      ctx.fillStyle = "#1e293b";
+      ctx.fillRect(10, 10, hpBarWidth, 8);
+      const hpRatio = player.hp / player.maxHp;
+      ctx.fillStyle = "#22c55e";
+      ctx.fillRect(10, 10, hpBarWidth * hpRatio, 8);
+
+      // power up HUD
+      if (powerUp.type && powerUp.timer > 0) {
+        ctx.fillStyle = "#e5e7eb";
+        ctx.font = "10px system-ui";
+        ctx.fillText(`Power: ${powerUp.type}`, 10, 32);
+      }
+
+      // player (submarine)
+      ctx.fillStyle = "#38bdf8";
+      ctx.fillRect(player.x - player.w / 2, player.y - player.h / 2, player.w, player.h);
+      ctx.fillRect(player.x - 8, player.y - player.h / 2 - 6, 16, 6);
+
+      // bullets
+      ctx.fillStyle = "#f97316";
+      bullets.forEach(b => {
+        ctx.fillRect(b.x - 2, b.y - 6, 4, 8);
+      });
+
+      // enemies
+      enemies.forEach(e => {
+        if (e.isPowerUp) {
+          ctx.fillStyle = "#a855f7";
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.w / 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = "#ef4444";
+          ctx.fillRect(e.x - e.w / 2, e.y - e.h / 2, e.w, e.h);
         }
-        break;
+      });
+    }
+
+    function update() {
+      if (!running) return;
+
+      // move player
+      if (keys["ArrowLeft"] || keys["a"]) {
+        player.x -= player.speed;
+      }
+      if (keys["ArrowRight"] || keys["d"]) {
+        player.x += player.speed;
+      }
+      if (keys["ArrowUp"] || keys["w"]) {
+        player.y -= player.speed;
+      }
+      if (keys["ArrowDown"] || keys["s"]) {
+        player.y += player.speed;
+      }
+
+      player.x = Math.min(Math.max(player.x, player.w / 2), canvas.width - player.w / 2);
+      player.y = Math.min(Math.max(player.y, canvas.height / 2), canvas.height - 20);
+
+      // spawn enemies
+      enemyTimer += 1;
+      if (enemyTimer > 60) {
+        enemyTimer = 0;
+        spawnEnemy();
+      }
+
+      // update enemies
+      enemies.forEach(e => {
+        e.y += e.vy;
+      });
+      enemies = enemies.filter(e => e.y < canvas.height + 40 && e.hp > 0);
+
+      // bullets
+      bullets.forEach(b => {
+        b.y += b.vy;
+        if (b.vx) b.x += b.vx;
+      });
+      bullets = bullets.filter(b => b.y > -10 && b.y < canvas.height + 10);
+
+      // collisions
+      bullets.forEach(b => {
+        enemies.forEach(e => {
+          if (
+            b.x > e.x - e.w / 2 &&
+            b.x < e.x + e.w / 2 &&
+            b.y > e.y - e.h / 2 &&
+            b.y < e.y + e.h / 2
+          ) {
+            e.hp -= 1;
+            b.y = -999;
+            if (e.hp <= 0) {
+              if (e.isPowerUp && e.powerType) {
+                powerUp.type = e.powerType;
+                powerUp.timer = 600; // ~10 detik
+                if (powerUp.type === "speed") {
+                  player.speed = player.baseSpeed * 1.8;
+                }
+              } else {
+                score += 10;
+                scoreEl.textContent = String(score);
+                if (score >= 200) unlockAchievement("submarine-200");
+              }
+              playBeep("score");
+            }
+          }
+        });
+      });
+
+      // enemy hits player
+      enemies.forEach(e => {
+        if (e.isPowerUp) return;
+        if (
+          Math.abs(e.x - player.x) < (e.w + player.w) / 2 &&
+          Math.abs(e.y - player.y) < (e.h + player.h) / 2
+        ) {
+          e.y = canvas.height + 999;
+          player.hp -= 20;
+          playBeep("error");
+        }
+      });
+
+      if (player.hp <= 0) {
+        maybeSetHighScore("submarine", score);
+        running = false;
+        playBeep("error");
+      }
+
+      if (powerUp.type) {
+        powerUp.timer -= 1;
+        if (powerUp.timer <= 0) {
+          if (powerUp.type === "speed") {
+            player.speed = player.baseSpeed;
+          }
+          powerUp.type = null;
+        }
+      }
+
+      draw();
+      frameId = requestAnimationFrame(update);
+    }
+
+    function startGame() {
+      reset();
+      running = true;
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(update);
+    }
+
+    function stopGame() {
+      running = false;
+      cancelAnimationFrame(frameId);
+      draw();
+    }
+
+    function keyDown(e) {
+      const k = e.key.toLowerCase();
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d", " "].includes(k)) {
+        e.preventDefault();
+      }
+      if (k === " ") {
+        if (running) {
+          fireBullets();
+        }
+      } else {
+        keys[k] = true;
       }
     }
-  }
 
-  for (const e of enemies) {
-    const dx = e.x - submarine.x;
-    const dy = e.y - submarine.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < e.r + submarine.r) {
-      if (timeNow < submarine.invUntil) continue;
-      submarine.hp -= 1;
-      submarine.invUntil = timeNow + 1500;
-      if (submarine.hp <= 0) {
-        endSubmarine();
-        return;
+    function keyUp(e) {
+      const k = e.key.toLowerCase();
+      keys[k] = false;
+    }
+
+    startBtn.addEventListener("click", () => {
+      playBeep("click");
+      startGame();
+    });
+
+    document.addEventListener("keydown", keyDown);
+    document.addEventListener("keyup", keyUp);
+
+    draw();
+
+    games["submarine"] = {
+      start() {
+        draw();
+      },
+      stop() {
+        stopGame();
+      }
+    };
+  })();
+
+  /* =========================
+   *  GAME: 2048
+   * ========================= */
+  (function init2048() {
+    const gridEl = document.getElementById("g2048-grid");
+    const scoreEl = document.getElementById("g2048-score");
+    const startBtn = document.getElementById("g2048-start");
+
+    let board;
+    let score = 0;
+    let running = false;
+    let keyHandler;
+
+    function createEmptyBoard() {
+      return Array.from({ length: 4 }, () => [0, 0, 0, 0]);
+    }
+
+    function spawnTile() {
+      const empty = [];
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          if (!board[r][c]) empty.push({ r, c });
+        }
+      }
+      if (!empty.length) return;
+      const { r, c } = empty[Math.floor(Math.random() * empty.length)];
+      board[r][c] = Math.random() < 0.9 ? 2 : 4;
+    }
+
+    function render() {
+      gridEl.innerHTML = "";
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          const val = board[r][c];
+          const tile = document.createElement("div");
+          tile.className = "g2048-tile";
+          if (val) {
+            tile.textContent = val;
+            tile.classList.add(`g2048-tile-${val}`);
+          } else {
+            tile.textContent = "";
+          }
+          gridEl.appendChild(tile);
+        }
+      }
+      scoreEl.textContent = String(score);
+    }
+
+    function slideRow(row) {
+      const arr = row.filter(v => v);
+      for (let i = 0; i < arr.length - 1; i++) {
+        if (arr[i] === arr[i + 1]) {
+          arr[i] *= 2;
+          score += arr[i];
+          arr[i + 1] = 0;
+        }
+      }
+      return arr.filter(v => v);
+    }
+
+    function moveLeft() {
+      let moved = false;
+      for (let r = 0; r < 4; r++) {
+        const row = board[r];
+        const slided = slideRow(row);
+        const newRow = [...slided, ...Array(4 - slided.length).fill(0)];
+        if (newRow.some((v, idx) => v !== row[idx])) moved = true;
+        board[r] = newRow;
+      }
+      return moved;
+    }
+
+    function moveRight() {
+      let moved = false;
+      for (let r = 0; r < 4; r++) {
+        const row = board[r].slice().reverse();
+        const slided = slideRow(row);
+        const newRow = [...slided, ...Array(4 - slided.length).fill(0)].reverse();
+        if (newRow.some((v, idx) => v !== board[r][idx])) moved = true;
+        board[r] = newRow;
+      }
+      return moved;
+    }
+
+    function moveUp() {
+      let moved = false;
+      for (let c = 0; c < 4; c++) {
+        const col = [board[0][c], board[1][c], board[2][c], board[3][c]];
+        const slided = slideRow(col);
+        const newCol = [...slided, ...Array(4 - slided.length).fill(0)];
+        for (let r = 0; r < 4; r++) {
+          if (board[r][c] !== newCol[r]) moved = true;
+          board[r][c] = newCol[r];
+        }
+      }
+      return moved;
+    }
+
+    function moveDown() {
+      let moved = false;
+      for (let c = 0; c < 4; c++) {
+        const col = [board[0][c], board[1][c], board[2][c], board[3][c]].reverse();
+        const slided = slideRow(col);
+        const newCol = [...slided, ...Array(4 - slided.length).fill(0)].reverse();
+        for (let r = 0; r < 4; r++) {
+          if (board[r][c] !== newCol[r]) moved = true;
+          board[r][c] = newCol[r];
+        }
+      }
+      return moved;
+    }
+
+    function hasMoves() {
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          if (!board[r][c]) return true;
+          if (c < 3 && board[r][c] === board[r][c + 1]) return true;
+          if (r < 3 && board[r][c] === board[r + 1][c]) return true;
+        }
+      }
+      return false;
+    }
+
+    function startGame() {
+      board = createEmptyBoard();
+      score = 0;
+      spawnTile();
+      spawnTile();
+      running = true;
+      render();
+
+      if (!keyHandler) {
+        keyHandler = e => {
+          if (!running) return;
+          const key = e.key;
+          if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key)) {
+            e.preventDefault();
+          }
+          let moved = false;
+          if (key === "ArrowLeft") moved = moveLeft();
+          else if (key === "ArrowRight") moved = moveRight();
+          else if (key === "ArrowUp") moved = moveUp();
+          else if (key === "ArrowDown") moved = moveDown();
+
+          if (moved) {
+            spawnTile();
+            render();
+            playBeep("click");
+            maybeSetHighScore("game2048", score);
+            if (!hasMoves()) {
+              running = false;
+              playBeep("error");
+            }
+          }
+        };
+      }
+      document.addEventListener("keydown", keyHandler);
+    }
+
+    function stopGame() {
+      running = false;
+      if (keyHandler) {
+        document.removeEventListener("keydown", keyHandler);
       }
     }
-  }
 
-  for (let i = powerUps.length - 1; i >= 0; i--) {
-    const p = powerUps[i];
-    const dx = p.x - submarine.x;
-    const dy = p.y - submarine.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < submarine.r + 12) {
-      applyPowerUp(p.type, timeNow);
-      powerUps.splice(i, 1);
-      sfxSubPower();
-    }
-  }
-}
-
-function shootTorpedo(timeNow) {
-  const cooldownBase = 230;
-  const cooldown =
-    submarine.speedMultiplier > 1 ? cooldownBase * 0.7 : cooldownBase;
-
-  if (timeNow - lastShotTime < cooldown) return;
-  lastShotTime = timeNow;
-
-  const shots = [];
-  const yStart = submarine.y - 18;
-
-  if (submarine.fireMode === "single") {
-    shots.push({ x: submarine.x, y: yStart, vx: 0, vy: -6 });
-  } else if (submarine.fireMode === "double") {
-    shots.push({ x: submarine.x - 8, y: yStart, vx: 0, vy: -6 });
-    shots.push({ x: submarine.x + 8, y: yStart, vx: 0, vy: -6 });
-  } else if (submarine.fireMode === "spread") {
-    shots.push({ x: submarine.x, y: yStart, vx: 0, vy: -6 });
-    shots.push({ x: submarine.x - 6, y: yStart, vx: -1.5, vy: -6 });
-    shots.push({ x: submarine.x + 6, y: yStart, vx: 1.5, vy: -6 });
-  }
-
-  torpedoes.push(...shots);
-  sfxSubShoot();
-}
-
-function spawnEnemy(timeNow) {
-  const w = subCanvas.width;
-  const baseInterval = 900;
-  if (timeNow - lastEnemySpawn < baseInterval) return;
-  lastEnemySpawn = timeNow;
-
-  const eliteChance = 0.18;
-  if (Math.random() < eliteChance) {
-    const x = 40 + Math.random() * (w - 80);
-    enemies.push({
-      type: "elite",
-      x,
-      y: -30,
-      baseX: x,
-      phase: Math.random() * Math.PI * 2,
-      vx: 0,
-      vy: 1.3,
-      r: 22,
-      hp: 3,
-      score: 30,
+    startBtn.addEventListener("click", () => {
+      playBeep("click");
+      startGame();
     });
-  } else {
-    enemies.push({
-      type: "normal",
-      x: 40 + Math.random() * (w - 80),
-      y: -20,
-      vx: (Math.random() - 0.5) * 0.8,
-      vy: 1.6 + Math.random() * 1.2,
-      r: 16,
-      hp: 1,
-      score: 10,
+
+    board = createEmptyBoard();
+    render();
+
+    games["game2048"] = {
+      start() {
+        render();
+      },
+      stop() {
+        stopGame();
+      }
+    };
+  })();
+
+  /* =========================
+   *  GAME: BREAKOUT
+   * ========================= */
+  (function initBreakout() {
+    const canvas = document.getElementById("breakout-canvas");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("breakout-score");
+    const startBtn = document.getElementById("breakout-start");
+
+    let running = false;
+    let frameId;
+    let paddleX, paddleWidth, paddleHeight;
+    let ballX, ballY, ballVX, ballVY, ballR;
+    let bricks, rows, cols, brickWidth, brickHeight, score;
+    let mouseHandler;
+
+    function reset() {
+      paddleWidth = 70;
+      paddleHeight = 12;
+      paddleX = (canvas.width - paddleWidth) / 2;
+
+      ballR = 7;
+      ballX = canvas.width / 2;
+      ballY = canvas.height - 40;
+      ballVX = 3;
+      ballVY = -3;
+
+      rows = 4;
+      cols = 8;
+      brickWidth = (canvas.width - 40) / cols;
+      brickHeight = 16;
+      bricks = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          bricks.push({
+            x: 20 + c * brickWidth,
+            y: 30 + r * (brickHeight + 4),
+            w: brickWidth - 4,
+            h: brickHeight,
+            alive: true
+          });
+        }
+      }
+      score = 0;
+      scoreEl.textContent = "0";
+      draw();
+    }
+
+    function draw() {
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // bricks
+      bricks.forEach(b => {
+        if (!b.alive) return;
+        ctx.fillStyle = "#38bdf8";
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+      });
+
+      // paddle
+      ctx.fillStyle = "#e5e7eb";
+      ctx.fillRect(paddleX, canvas.height - paddleHeight - 10, paddleWidth, paddleHeight);
+
+      // ball
+      ctx.fillStyle = "#f97316";
+      ctx.beginPath();
+      ctx.arc(ballX, ballY, ballR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function update() {
+      if (!running) return;
+
+      ballX += ballVX;
+      ballY += ballVY;
+
+      if (ballX < ballR || ballX > canvas.width - ballR) {
+        ballVX *= -1;
+        playBeep("click");
+      }
+      if (ballY < ballR) {
+        ballVY *= -1;
+        playBeep("click");
+      }
+
+      // paddle collision
+      const paddleTop = canvas.height - paddleHeight - 10;
+      if (
+        ballY + ballR >= paddleTop &&
+        ballY + ballR <= paddleTop + paddleHeight &&
+        ballX >= paddleX &&
+        ballX <= paddleX + paddleWidth
+      ) {
+        ballVY *= -1;
+        const hitPos = (ballX - paddleX) / paddleWidth - 0.5;
+        ballVX += hitPos * 2;
+        playBeep("click");
+      }
+
+      // brick collisions
+      bricks.forEach(b => {
+        if (!b.alive) return;
+        if (
+          ballX + ballR > b.x &&
+          ballX - ballR < b.x + b.w &&
+          ballY + ballR > b.y &&
+          ballY - ballR < b.y + b.h
+        ) {
+          b.alive = false;
+          ballVY *= -1;
+          score += 10;
+          scoreEl.textContent = String(score);
+          playBeep("score");
+        }
+      });
+
+      // game over
+      if (ballY > canvas.height + ballR) {
+        maybeSetHighScore("breakout", score);
+        running = false;
+        playBeep("error");
+      }
+
+      draw();
+      frameId = requestAnimationFrame(update);
+    }
+
+    function startGame() {
+      reset();
+      running = true;
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(update);
+    }
+
+    function stopGame() {
+      running = false;
+      cancelAnimationFrame(frameId);
+      draw();
+    }
+
+    if (!mouseHandler) {
+      mouseHandler = e => {
+        const rect = canvas.getBoundingClientRect();
+        const relX = e.clientX - rect.left;
+        paddleX = relX - paddleWidth / 2;
+        paddleX = Math.max(0, Math.min(paddleX, canvas.width - paddleWidth));
+      };
+      canvas.addEventListener("mousemove", mouseHandler);
+    }
+
+    startBtn.addEventListener("click", () => {
+      playBeep("click");
+      startGame();
     });
-  }
-}
 
-function spawnPowerUp(timeNow) {
-  const w = subCanvas.width;
-  const interval = 6000;
-  if (timeNow - lastPowerSpawn < interval) return;
-  lastPowerSpawn = timeNow;
+    reset();
 
-  const types = ["speed", "double", "spread"];
-  const type = types[Math.floor(Math.random() * types.length)];
+    games["breakout"] = {
+      start() {
+        draw();
+      },
+      stop() {
+        stopGame();
+      }
+    };
+  })();
 
-  powerUps.push({
-    x: 40 + Math.random() * (w - 80),
-    y: -20,
-    vy: 1.2,
-    type,
-  });
-}
+  /* =========================
+   *  GAME: SPACE SHOOTER
+   * ========================= */
+  (function initSpaceShooter() {
+    const canvas = document.getElementById("space-canvas");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("space-score");
+    const startBtn = document.getElementById("space-start");
 
-function applyPowerUp(type, timeNow) {
-  const durSpeed = 8000;
-  const durOther = 9000;
-  if (type === "speed") {
-    submarine.speedUntil = timeNow + durSpeed;
-  } else if (type === "double") {
-    submarine.doubleUntil = timeNow + durOther;
-  } else if (type === "spread") {
-    submarine.spreadUntil = timeNow + durOther;
-  }
-}
+    let running = false;
+    let frameId;
+    let keys = {};
+    let player, bullets, enemies, score, spawnTimer;
 
-function renderSubmarine() {
-  if (!subCtx) return;
-  const w = subCanvas.width;
-  const h = subCanvas.height;
-
-  subCtx.clearRect(0, 0, w, h);
-  subCtx.fillStyle = "#020617";
-  subCtx.fillRect(0, 0, w, h);
-
-  subCtx.strokeStyle = "rgba(148,163,184,0.25)";
-  for (let i = 0; i < 15; i++) {
-    const bx = (i * 60 + performance.now() / 40) % w;
-    const by = (i * 30) % h;
-    subCtx.beginPath();
-    subCtx.arc(bx, by, 3, 0, Math.PI * 2);
-    subCtx.stroke();
-  }
-
-  subCtx.fillStyle = "#e5e7eb";
-  torpedoes.forEach((t) => {
-    subCtx.fillRect(t.x - 3, t.y - 8, 6, 10);
-  });
-
-  enemies.forEach((e) => {
-    if (e.type === "elite") {
-      subCtx.fillStyle = "#fb7185";
-    } else {
-      subCtx.fillStyle = "#f97373";
-    }
-    subCtx.beginPath();
-    subCtx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
-    subCtx.fill();
-    subCtx.strokeStyle = "#fecaca";
-    subCtx.beginPath();
-    subCtx.arc(e.x, e.y, e.r - 5, 0, Math.PI * 2);
-    subCtx.stroke();
-  });
-
-  powerUps.forEach((p) => {
-    let color = "#38bdf8";
-    let label = "S";
-    if (p.type === "double") {
-      color = "#eab308";
-      label = "D";
-    } else if (p.type === "spread") {
-      color = "#a855f7";
-      label = "T";
-    }
-    subCtx.fillStyle = color;
-    subCtx.beginPath();
-    subCtx.arc(p.x, p.y, 12, 0, Math.PI * 2);
-    subCtx.fill();
-    subCtx.fillStyle = "#020617";
-    subCtx.font = "10px system-ui";
-    subCtx.textAlign = "center";
-    subCtx.textBaseline = "middle";
-    subCtx.fillText(label, p.x, p.y + 1);
-  });
-
-  const now = performance.now();
-  const inv = now < submarine.invUntil;
-  if (inv && Math.floor(now / 120) % 2 === 0) {
-    subCtx.globalAlpha = 0.4;
-  } else {
-    subCtx.globalAlpha = 1;
-  }
-
-  subCtx.fillStyle = "#38bdf8";
-  subCtx.beginPath();
-  subCtx.ellipse(submarine.x, submarine.y, 24, 14, 0, 0, Math.PI * 2);
-  subCtx.fill();
-
-  subCtx.beginPath();
-  subCtx.moveTo(submarine.x, submarine.y - 18);
-  subCtx.lineTo(submarine.x - 8, submarine.y - 6);
-  subCtx.lineTo(submarine.x + 8, submarine.y - 6);
-  subCtx.closePath();
-  subCtx.fillStyle = "#0ea5e9";
-  subCtx.fill();
-
-  subCtx.fillStyle = "#0f172a";
-  subCtx.beginPath();
-  subCtx.arc(submarine.x, submarine.y, 6, 0, Math.PI * 2);
-  subCtx.fill();
-
-  subCtx.globalAlpha = 1;
-
-  const hp = submarine.hp;
-  const heartSize = 10;
-  for (let i = 0; i < hp; i++) {
-    const hx = 18 + i * 20;
-    const hy = 18;
-    subCtx.fillStyle = "#f97373";
-    subCtx.beginPath();
-    subCtx.arc(hx - 4, hy, heartSize / 2, 0, Math.PI * 2);
-    subCtx.arc(hx + 4, hy, heartSize / 2, 0, Math.PI * 2);
-    subCtx.lineTo(hx, hy + heartSize);
-    subCtx.closePath();
-    subCtx.fill();
-  }
-
-  const barWidth = 80;
-  const barHeight = 6;
-  const margin = 10;
-  let barIndex = 0;
-
-  function drawBar(label, frac, color) {
-    const x = w - barWidth - margin;
-    const y = margin + barIndex * (barHeight + 6);
-    barIndex++;
-
-    subCtx.fillStyle = "rgba(15,23,42,0.9)";
-    subCtx.fillRect(x, y, barWidth, barHeight);
-    subCtx.strokeStyle = "rgba(148,163,184,0.7)";
-    subCtx.strokeRect(x, y, barWidth, barHeight);
-
-    if (frac > 0) {
-      subCtx.fillStyle = color;
-      subCtx.fillRect(x + 1, y + 1, (barWidth - 2) * frac, barHeight - 2);
+    function reset() {
+      player = { x: canvas.width / 2, y: canvas.height - 30, w: 24, h: 16 };
+      bullets = [];
+      enemies = [];
+      score = 0;
+      scoreEl.textContent = "0";
+      spawnTimer = 0;
+      draw();
     }
 
-    subCtx.fillStyle = "#e5e7eb";
-    subCtx.font = "9px system-ui";
-    subCtx.textAlign = "right";
-    subCtx.textBaseline = "bottom";
-    subCtx.fillText(label, x + barWidth, y - 1);
-  }
+    function fire() {
+      bullets.push({ x: player.x, y: player.y - 12, vy: -5 });
+      playBeep("click");
+    }
 
-  const nowMs = performance.now();
-  const speedFrac = Math.max(0, (submarine.speedUntil - nowMs) / 8000);
-  const doubleFrac = Math.max(0, (submarine.doubleUntil - nowMs) / 9000);
-  const spreadFrac = Math.max(0, (submarine.spreadUntil - nowMs) / 9000);
+    function spawnEnemy() {
+      enemies.push({
+        x: Math.random() * (canvas.width - 40) + 20,
+        y: -20,
+        w: 20,
+        h: 16,
+        vy: 1.5 + Math.random()
+      });
+    }
 
-  drawBar("SPD", speedFrac, "#38bdf8");
-  drawBar("DBL", doubleFrac, "#eab308");
-  drawBar("SPR", spreadFrac, "#a855f7");
-}
+    function draw() {
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-function endSubmarine() {
-  subRunning = false;
-  if (subLoopId) cancelAnimationFrame(subLoopId);
-  subLoopId = null;
-  sfxSubGameOver();
-  handleGameEnd("submarine", subScore);
-  alert("Kapalmu hancur! Skor kamu: " + subScore);
-}
+      // stars
+      ctx.fillStyle = "#1f2937";
+      for (let i = 0; i < 40; i++) {
+        const x = (i * 23) % canvas.width;
+        const y = (i * 47) % canvas.height;
+        ctx.fillRect(x, y, 1, 1);
+      }
 
-function updateSubmarineScore() {
-  const el = document.getElementById("submarine-score");
-  if (el) el.textContent = subScore;
-}
+      // player
+      ctx.fillStyle = "#38bdf8";
+      ctx.fillRect(player.x - player.w / 2, player.y - player.h / 2, player.w, player.h);
+
+      // bullets
+      ctx.fillStyle = "#f97316";
+      bullets.forEach(b => {
+        ctx.fillRect(b.x - 2, b.y - 8, 4, 8);
+      });
+
+      // enemies
+      ctx.fillStyle = "#e11d48";
+      enemies.forEach(e => {
+        ctx.fillRect(e.x - e.w / 2, e.y - e.h / 2, e.w, e.h);
+      });
+    }
+
+    function update() {
+      if (!running) return;
+
+      if (keys["arrowleft"]) player.x -= 3;
+      if (keys["arrowright"]) player.x += 3;
+      player.x = Math.max(10, Math.min(canvas.width - 10, player.x));
+
+      spawnTimer++;
+      if (spawnTimer > 50) {
+        spawnTimer = 0;
+        spawnEnemy();
+      }
+
+      bullets.forEach(b => {
+        b.y += b.vy;
+      });
+      bullets = bullets.filter(b => b.y > -10);
+
+      enemies.forEach(e => {
+        e.y += e.vy;
+      });
+      enemies = enemies.filter(e => e.y < canvas.height + 20);
+
+      // collisions
+      bullets.forEach(b => {
+        enemies.forEach(e => {
+          if (
+            b.x > e.x - e.w / 2 &&
+            b.x < e.x + e.w / 2 &&
+            b.y > e.y - e.h / 2 &&
+            b.y < e.y + e.h / 2
+          ) {
+            e.y = canvas.height + 999;
+            b.y = -999;
+            score += 10;
+            scoreEl.textContent = String(score);
+            playBeep("score");
+          }
+        });
+      });
+
+      // enemy hits player
+      enemies.forEach(e => {
+        if (
+          Math.abs(e.x - player.x) < (e.w + player.w) / 2 &&
+          Math.abs(e.y - player.y) < (e.h + player.h) / 2
+        ) {
+          running = false;
+          playBeep("error");
+        }
+      });
+
+      draw();
+      frameId = requestAnimationFrame(update);
+    }
+
+    function startGame() {
+      reset();
+      running = true;
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(update);
+    }
+
+    function stopGame() {
+      running = false;
+      cancelAnimationFrame(frameId);
+      draw();
+    }
+
+    function keyDown(e) {
+      const k = e.key.toLowerCase();
+      if (["arrowleft", "arrowright", " "].includes(k)) e.preventDefault();
+      if (k === " ") {
+        if (running) fire();
+      } else {
+        keys[k] = true;
+      }
+    }
+
+    function keyUp(e) {
+      keys[e.key.toLowerCase()] = false;
+    }
+
+    document.addEventListener("keydown", keyDown);
+    document.addEventListener("keyup", keyUp);
+
+    startBtn.addEventListener("click", () => {
+      playBeep("click");
+      startGame();
+    });
+
+    reset();
+
+    games["space"] = {
+      start() {
+        draw();
+      },
+      stop() {
+        stopGame();
+      }
+    };
+  })();
+
+  /* =========================
+   *  GAME: PONG
+   * ========================= */
+  (function initPong() {
+    const canvas = document.getElementById("pong-canvas");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("pong-score");
+    const startBtn = document.getElementById("pong-start");
+
+    let running = false;
+    let frameId;
+    let playerY, aiY, paddleHeight;
+    let ballX, ballY, ballVX, ballVY, ballR;
+    let playerScore, aiScore;
+    let mouseHandler;
+
+    function reset() {
+      paddleHeight = 50;
+      playerY = canvas.height / 2;
+      aiY = canvas.height / 2;
+      ballR = 6;
+      ballX = canvas.width / 2;
+      ballY = canvas.height / 2;
+      ballVX = 3;
+      ballVY = 2;
+      playerScore = 0;
+      aiScore = 0;
+      scoreEl.textContent = "0";
+      draw();
+    }
+
+    function serve(direction = 1) {
+      ballX = canvas.width / 2;
+      ballY = canvas.height / 2;
+      ballVX = 3 * direction;
+      ballVY = (Math.random() * 2 + 1) * (Math.random() > 0.5 ? 1 : -1);
+    }
+
+    function draw() {
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // center line
+      ctx.strokeStyle = "#1e293b";
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(canvas.width / 2, canvas.height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // paddles
+      ctx.fillStyle = "#38bdf8";
+      ctx.fillRect(10, playerY - paddleHeight / 2, 6, paddleHeight);
+
+      ctx.fillStyle = "#facc15";
+      ctx.fillRect(canvas.width - 16, aiY - paddleHeight / 2, 6, paddleHeight);
+
+      // ball
+      ctx.fillStyle = "#f97316";
+      ctx.beginPath();
+      ctx.arc(ballX, ballY, ballR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function update() {
+      if (!running) return;
+
+      ballX += ballVX;
+      ballY += ballVY;
+
+      if (ballY < ballR || ballY > canvas.height - ballR) {
+        ballVY *= -1;
+        playBeep("click");
+      }
+
+      // player paddle collision
+      if (
+        ballX - ballR <= 16 &&
+        ballY > playerY - paddleHeight / 2 &&
+        ballY < playerY + paddleHeight / 2
+      ) {
+        ballVX *= -1;
+        const offset = (ballY - playerY) / (paddleHeight / 2);
+        ballVY = offset * 3;
+        playBeep("click");
+      }
+
+      // ai paddle collision
+      if (
+        ballX + ballR >= canvas.width - 16 &&
+        ballY > aiY - paddleHeight / 2 &&
+        ballY < aiY + paddleHeight / 2
+      ) {
+        ballVX *= -1;
+        const offset = (ballY - aiY) / (paddleHeight / 2);
+        ballVY = offset * 3;
+        playBeep("click");
+      }
+
+      // scoring
+      if (ballX < -10) {
+        aiScore++;
+        serve(1);
+        playBeep("error");
+      } else if (ballX > canvas.width + 10) {
+        playerScore++;
+        serve(-1);
+        playBeep("score");
+      }
+
+      scoreEl.textContent = `${playerScore} : ${aiScore}`;
+
+      // AI simple follow
+      if (ballY > aiY + 4) aiY += 2.6;
+      else if (ballY < aiY - 4) aiY -= 2.6;
+      aiY = Math.max(paddleHeight / 2, Math.min(canvas.height - paddleHeight / 2, aiY));
+
+      draw();
+      frameId = requestAnimationFrame(update);
+    }
+
+    function startGame() {
+      reset();
+      serve(1);
+      running = true;
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(update);
+    }
+
+    function stopGame() {
+      running = false;
+      cancelAnimationFrame(frameId);
+      draw();
+    }
+
+    if (!mouseHandler) {
+      mouseHandler = e => {
+        const rect = canvas.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        playerY = Math.max(paddleHeight / 2, Math.min(canvas.height - paddleHeight / 2, y));
+      };
+      canvas.addEventListener("mousemove", mouseHandler);
+    }
+
+    startBtn.addEventListener("click", () => {
+      playBeep("click");
+      startGame();
+    });
+
+    reset();
+
+    games["pong"] = {
+      start() {
+        draw();
+      },
+      stop() {
+        stopGame();
+      }
+    };
+  })();
+
+  /* =========================
+   *  GAME: MEMORY MATCH
+   * ========================= */
+  (function initMemory() {
+    const gridEl = document.getElementById("memory-grid");
+    const stepsEl = document.getElementById("memory-steps");
+    const startBtn = document.getElementById("memory-start");
+
+    const symbols = ["🐍", "🚢", "🎮", "💎", "🧠", "🧱", "👾", "🏓"];
+    let cards = [];
+    let flipped = [];
+    let steps = 0;
+    let lockBoard = false;
+
+    function createCards() {
+      const pool = [...symbols, ...symbols]; // 16 cards
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      cards = pool.map(sym => ({
+        symbol: sym,
+        matched: false
+      }));
+    }
+
+    function render() {
+      gridEl.innerHTML = "";
+      cards.forEach((card, idx) => {
+        const cardEl = document.createElement("div");
+        cardEl.className = "memory-card";
+        if (card.matched) cardEl.classList.add("matched");
+
+        const inner = document.createElement("div");
+        inner.className = "memory-card-inner";
+
+        const front = document.createElement("div");
+        front.className = "memory-card-front";
+        front.textContent = card.symbol;
+
+        const back = document.createElement("div");
+        back.className = "memory-card-back";
+        back.textContent = "?";
+
+        inner.appendChild(front);
+        inner.appendChild(back);
+        cardEl.appendChild(inner);
+
+        cardEl.addEventListener("click", () => onCardClick(idx, cardEl));
+        gridEl.appendChild(cardEl);
+      });
+      stepsEl.textContent = String(steps);
+    }
+
+    function onCardClick(idx, cardEl) {
+      if (lockBoard || cards[idx].matched) return;
+
+      if (!flipped.includes(idx)) {
+        flipped.push(idx);
+        cardEl.classList.add("flipped");
+        playBeep("click");
+      }
+
+      if (flipped.length === 2) {
+        lockBoard = true;
+        steps++;
+        stepsEl.textContent = String(steps);
+        const [i1, i2] = flipped;
+        if (cards[i1].symbol === cards[i2].symbol) {
+          // match
+          cards[i1].matched = true;
+          cards[i2].matched = true;
+          playBeep("score");
+          flipped = [];
+          lockBoard = false;
+          if (cards.every(c => c.matched)) {
+            maybeSetHighScore("memory", Math.max(0, 100 - steps * 2));
+          }
+        } else {
+          setTimeout(() => {
+            const els = gridEl.querySelectorAll(".memory-card");
+            els[i1].classList.remove("flipped");
+            els[i2].classList.remove("flipped");
+            flipped = [];
+            lockBoard = false;
+          }, 500);
+        }
+      }
+    }
+
+    function startGame() {
+      steps = 0;
+      flipped = [];
+      lockBoard = false;
+      createCards();
+      render();
+    }
+
+    startBtn.addEventListener("click", () => {
+      playBeep("click");
+      startGame();
+    });
+
+    createCards();
+    render();
+
+    games["memory"] = {
+      start() {
+        render();
+      },
+      stop() {
+        // no loop
+      }
+    };
+  })();
+
+  /* ==========
+   *  INIT
+   * ========== */
+  loadFromStorage();
+});

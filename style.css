@@ -1197,3 +1197,8 @@ body.theme-neon .game-content {
   }
 }
 
+#achievements-panel {
+  max-height: 220px;
+  overflow-y: auto;
+}
+

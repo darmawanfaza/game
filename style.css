@@ -7,6 +7,12 @@
   box-sizing: border-box;
 }
 
+html, body {
+  height: 100%;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+}
+
 :root {
   --bg-body: #020617;
   --bg-dark: #050816;
@@ -58,8 +64,10 @@ body {
   position: relative;
   width: 100%;
   max-width: 1280px;
-  /* HAPUS max-height agar tinggi boleh lebih dari viewport */
-  /* max-height: 100%; */
+
+  /* Hilangkan pembatas tinggi */
+  height: auto;
+  max-height: none;
 
   background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.14), transparent 60%),
     linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.98));
@@ -67,13 +75,14 @@ body {
   border: 1px solid rgba(148, 163, 184, 0.4);
   box-shadow: var(--shadow-elevated);
   padding: 12px 18px 14px;
+
+  /* FLEX YES, tapi jangan batasi tinggi! */
   display: flex;
   flex-direction: column;
 
-  /* IZINKAN scroll di dalam app-shell */
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: visible; /* Pastikan anak-anaknya boleh overflow */
 }
+
 
 
 /* ===== HEADER / TOP BAR ===== */
@@ -1201,4 +1210,5 @@ body.theme-neon .game-content {
   max-height: 220px;
   overflow-y: auto;
 }
+
 

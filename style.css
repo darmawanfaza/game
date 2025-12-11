@@ -1211,4 +1211,28 @@ body.theme-neon .game-content {
   overflow-y: auto;
 }
 
+/* ==== FIX SCROLL DAFTAR PERMAINAN ==== */
+.app-body {
+  display: flex;
+  gap: 20px;
+  height: 100%; /* penting */
+}
+
+/* area tengah tempat daftar game */
+.main-content {
+  flex: 1;
+  min-height: 0;         /* flexbox trick agar child bisa scroll */
+  overflow-y: auto;      /* izinkan scroll */
+  padding-right: 8px;    /* supaya scroll bar tidak menutup teks */
+}
+
+/* daftar game */
+.game-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;      /* scroll khusus list */
+  padding-bottom: 40px;  /* biar bawah tidak ke-cut */
+}
+
 
